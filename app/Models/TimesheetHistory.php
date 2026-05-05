@@ -9,8 +9,7 @@ class TimesheetHistory extends Model
 
     protected $table = 'timesheet_historys';
 
-    public $timestamps = false;
-
+   
     protected $fillable = [
         'timesheet_id',
         'employee_id',

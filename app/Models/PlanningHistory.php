@@ -8,8 +8,6 @@ class PlanningHistory extends Model
 {
     protected $table = 'planning_historys';
 
-    public $timestamps = false;
-
     protected $fillable = [
         'planning_assignment_id',
         'old_status',

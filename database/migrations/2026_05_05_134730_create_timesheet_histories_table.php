@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('new_status');
             $table->foreignId('changed_by')->constrained('users')->onDelete('cascade');
             $table->text('reason')->nullable();
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
         });
     }
 
