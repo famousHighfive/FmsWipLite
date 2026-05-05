@@ -14,10 +14,10 @@ return new class extends Migration
             $table->id();
 
             // L'employé concerné. Si on supprime l'employé de la base, son affectation s'efface (cascade)
-            $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
+            $table->foreignId('employee_id')->constrained('employees');
 
             // La campagne liée. Si on supprime la campagne, les affectations liées s'effacent aussi (cascade)
-            $table->foreignId('campaign_id')->constrained('campaigns')->onDelete('cascade');
+            $table->foreignId('campaign_id')->constrained('campaigns');
 
             // C'est un employé qui commande un autre employé.
             $table->foreignId('manager_id')->nullable()->constrained('employees')->onDelete('set null');
