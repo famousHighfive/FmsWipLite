@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->text('description')->nullable();
             $table->date('start_date');
             $table->date('end_date')->nullable();
-            $table->enum('status', ['active', 'inactive', 'terminée']);
+            $table->enum('status', ['active', 'inactive', 'terminee']);
             $table->timestamps();
         });
     }
