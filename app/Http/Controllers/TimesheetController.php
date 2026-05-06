@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Timesheet;
 use App\Http\Requests\StoreTimesheetRequest;
 use App\Http\Requests\UpdateTimesheetRequest;
+use App\Models\Timesheet;
+use Inertia\Inertia;
 
 class TimesheetController extends Controller
 {
@@ -14,6 +15,15 @@ class TimesheetController extends Controller
     public function index()
     {
         //
+        // On charge les relations 'employee' et 'entries' via with().
+        // Les colonnes 'period_start' et 'period_end' sont incluses par défaut
+        // car elles appartiennent à la table 'timesheets'.
+        // Ne mettez JAMAIS de noms de colonnes dans with().
+        $calendar = Timesheet::with(['employee', 'entries'])->get();
+
+        return Inertia::render('Timesheets/calendar', [
+            'calendar' => $calendar,
+        ]);
     }
 
     /**
