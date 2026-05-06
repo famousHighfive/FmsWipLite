@@ -3,8 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Role;
+use App\Models\Position;
 use Illuminate\Database\Seeder;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,11 +17,32 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // 1. Les données de référence (Tables sans dépendances)
+        $this->call([
+            RoleSeeder::class,       // admin, cp, sup, tc
+            PositionSeeder::class,   // RH, TC, SUP, CP
+            CampaignSeeder::class,   // Vos campagnes de production
+        ]);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // 2. Création de l'utilisateur de test (Administrateur)
+        // On s'assure qu'il a le rôle 'admin'
+        $adminRole = Role::where('name', 'admin')->first();
+
+        $adminUser = User::factory()->create([
+            'name' => 'Admin Test',
+            'email' => 'admin@example.com',
+            'role_id' => $adminRole->id,
+        ]);
+
+        // 3. Les données dépendantes
+        $this->call([
+            EmployeeSeeder::class,            // Crée les employés liés aux users
+            AssignmentSeeder::class,          // Lie employés, campagnes et managers
+            PlanningModelSeeder::class,       // Modèles horaires (35h, etc.)
+            PlanningAssignmentSeeder::class,  // Affectation des plannings
+            TimesheetSeeder::class,           // Enveloppes de feuilles de temps
+            TimesheetEntrySeeder::class,      // Détail des pointages
+            LogHistorySeeder::class,          // Historiques et Logs d'activité
         ]);
     }
 }

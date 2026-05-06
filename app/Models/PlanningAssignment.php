@@ -1,11 +1,13 @@
 <?php
 
-namespace App;
+namespace App\Models;
 
+use App\Models\Employee;
+use App\PlanningModel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class planning_assignments extends Model
+class PlanningAssignment extends Model
 {
     /** @use HasFactory<\Database\Factories\PlanningAssignmentsFactory> */
     use HasFactory;
@@ -30,5 +32,9 @@ class planning_assignments extends Model
     {
         return $this->belongsTo(PlanningModel::class, 'planning_model_id');
     }
+    public function validator()
+{
+    return $this->belongsTo(Employee::class, 'validated_by');
+}
 
 }

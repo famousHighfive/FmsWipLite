@@ -1,11 +1,11 @@
 <?php
 
-namespace App;
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class planning_models extends Model
+class PlanningModel extends Model
 {
     /** @use HasFactory<\Database\Factories\PlanningModelsFactory> */
     use HasFactory;

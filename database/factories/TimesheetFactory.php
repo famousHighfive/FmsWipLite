@@ -1,24 +1,23 @@
 <?php
 
+// database/factories/TimesheetFactory.php
 namespace Database\Factories;
 
-use App\Models\Timesheet;
+use App\Models\Employee;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<Timesheet>
- */
 class TimesheetFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
+        $start = now()->startOfWeek();
         return [
-            //
+            'employee_id' => Employee::inRandomOrder()->first() ?? Employee::factory(),
+            'period_start' => $start,
+            'period_end' => (clone $start)->endOfWeek(),
+            'status' => $this->faker->randomElement(['brouillon', 'soumis', 'valide']),
+            'validated_by' => Employee::whereHas('position', fn($q) => $q->where('code', 'CP'))->inRandomOrder()->first()?->id,
+            'validated_at' => now(),
         ];
     }
 }

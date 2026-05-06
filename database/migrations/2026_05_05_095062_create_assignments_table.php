@@ -26,7 +26,7 @@ return new class extends Migration
             $table->foreignId('position_id')->constrained('positions');
 
             // État de l'affectation
-            $table->enum('status', ['actif', 'terminé', 'suspendu'])->default('actif');
+            $table->enum('status', ['actif', 'termine', 'suspendu'])->default('actif');
             
             $table->date('start_date');
             $table->date('end_date')->nullable();
