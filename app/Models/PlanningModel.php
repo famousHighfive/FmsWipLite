@@ -28,7 +28,7 @@ class PlanningModel extends Model
         return $this->hasMany(PlanningAssignment::class);
     }
 
-    public function createdBy()
+    public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }

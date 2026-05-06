@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\PlanningModelsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
+use App\Models\PlanningModel;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -40,7 +42,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Employees/Index');
     })->name('employees.index');
 
+
     Route::resource('users', UserController::class);
+    Route::resource('planning/models', PlanningModelsController::class)->names('planning.models');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
