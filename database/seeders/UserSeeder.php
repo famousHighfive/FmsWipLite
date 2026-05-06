@@ -25,11 +25,13 @@ public function run(): void
             'name' => 'Admin User',
             'email' => 'admin@test.com',
             'role_id' => $roles->where('name', 'admin')->first()->id,
+            'password' => Hash::make('1234'),
         ]);
 
         // 3. Créer 20 utilisateurs aléatoires répartis sur les rôles existants
         User::factory(300)->create([
             'role_id' => fn() => $roles->random()->id,
+            'password' => Hash::make('1234'),
         ]);
     }
 }

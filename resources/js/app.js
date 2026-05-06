@@ -8,6 +8,8 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import Primevue from  'primevue/config';
 import Aura from '@primeuix/themes/aura';
 import ToastService from 'primevue/toastservice';
+import 'primeicons/primeicons.css'
+
 
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
