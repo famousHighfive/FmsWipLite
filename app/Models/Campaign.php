@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 class Campaign extends Model
 {
 
-    // Récupérer toutes les affectations de cette campagne
+    // Relation : Une campagne a plusieurs affectations
     public function assignments()
     {
         return $this->hasMany(Assignment::class);
