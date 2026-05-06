@@ -42,8 +42,7 @@ class TimesheetSeeder extends Seeder
                     'break_duration' => 60,
                     'planned_hours' => $planned,
                     'total_hours' => $real,
-                    'overtime_hours' => $real - $planned,
-                    'status' => 'actif'
+                    'overtime_hours' => $real - $planned
                 ]);
             }
         }
