@@ -30,6 +30,7 @@ class RoleSeeder extends Seeder
         foreach ($roles as $role) {
             Role::updateOrCreate(
                 ['name' => $role['name']], // Condition d'unicité
+                $role
             );
         }
     }

@@ -23,10 +23,14 @@ class PlanningModel extends Model
         'created_by',
     ];
 
-    // Relation inverse : un employé a plusieurs affectations
-    public function assignments()
+    public function planningAssignments()
     {
-        return $this->hasMany(PlanningAssignment::class, 'employee_id');
+        return $this->hasMany(PlanningAssignment::class);
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
 }

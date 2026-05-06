@@ -1,6 +1,5 @@
 <?php
 
-// database/factories/TimesheetFactory.php
 namespace Database\Factories;
 
 use App\Models\Employee;

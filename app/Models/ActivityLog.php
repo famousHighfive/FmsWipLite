@@ -20,18 +20,11 @@ class ActivityLog extends Model
         'ip_address'
     ];
 
-    /**
-     * Relation avec l'utilisateur qui a effectué l'action.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Relation polymorphique. 
-     * Permet de récupérer l'objet lié (Employee, Campaign, etc.)
-     */
     public function model(): MorphTo
     {
         return $this->morphTo();

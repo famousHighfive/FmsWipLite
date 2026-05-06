@@ -12,11 +12,11 @@ class Timesheet extends Model
     use HasFactory;
 
     protected $fillable = [
-        'employee_id', 
-        'period_start', 
-        'period_end', 
-        'status', 
-        'validated_by', 
+        'employee_id',
+        'period_start',
+        'period_end',
+        'status',
+        'validated_by',
         'validated_at'
     ];
 
@@ -26,25 +26,16 @@ class Timesheet extends Model
         'validated_at' => 'datetime',
     ];
 
-    /**
-     * L'employé à qui appartient la feuille de temps
-     */
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
     }
 
-    /**
-     * Le manager (employé) qui a validé
-     */
     public function validator(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'validated_by');
     }
 
-    /**
-     * Les entrées quotidiennes liées
-     */
     public function entries(): HasMany
     {
         return $this->hasMany(TimesheetEntry::class);

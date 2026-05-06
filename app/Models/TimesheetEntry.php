@@ -26,24 +26,31 @@ class TimesheetEntry extends Model
 
     protected $casts = [
         'date' => 'date',
+        'total_hours' => 'decimal:2',
+        'planned_hours' => 'decimal:2',
+        'overtime_hours' => 'decimal:2',
     ];
 
     public function timesheet(): BelongsTo
     {
         return $this->belongsTo(Timesheet::class);
     }
-public function calculateHours()
-{
-    if ($this->check_in && $this->check_out) {
-        $start = Carbon::parse($this->check_in);
-        $end = Carbon::parse($this->check_out);
-        
-        // Différence en heures moins la pause convertie en heures
-        $diff = $start->diffInMinutes($end) / 60;
-        $this->total_hours = $diff - ($this->break_duration / 60);
-        
-        // Calcul des heures sup
-        $this->overtime_hours = max(0, $this->total_hours - $this->planned_hours);
+
+    public function calculateHours()
+    {
+        if ($this->check_in && $this->check_out) {
+            $start = Carbon::parse($this->check_in);
+            $end = Carbon::parse($this->check_out);
+
+            $diff = $start->diffInMinutes($end) / 60;
+            $this->total_hours = $diff - ($this->break_duration / 60);
+
+            $this->overtime_hours = max(0, $this->total_hours - $this->planned_hours);
+        }
     }
-}
+
+    public function isAbsent()
+    {
+        return !is_null($this->absence_type);
+    }
 }
