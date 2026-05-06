@@ -9,17 +9,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Timesheet extends Model
 {
-<<<<<<< HEAD
-    /** @use HasFactory<\Database\Factories\TimesheetsFactory> */
-    use HasFactory;
-    protected $fillable = [
-        'employee_id',
-        'period_start',
-        'period_end',
-        'status',
-        'validated_by',
-        'validated_at',
-=======
     use HasFactory;
 
     protected $fillable = [
@@ -29,26 +18,10 @@ class Timesheet extends Model
         'status', 
         'validated_by', 
         'validated_at'
->>>>>>> 2b06f4214a1276acce479a4c988985fbfc7914fc
     ];
 
     protected $casts = [
         'period_start' => 'date',
-<<<<<<< HEAD
-        'period_end'   => 'date',
-        'validated_at' => 'datetime',
-    ];
-    public function entries()
-    {
-        return $this->hasMany(Timesheet_entries::class);
-    }
-
-      public function validator()
-    {
-        return $this->belongsTo(Employee::class, 'validated_by');
-    }
-}
-=======
         'period_end' => 'date',
         'validated_at' => 'datetime',
     ];
@@ -77,4 +50,3 @@ class Timesheet extends Model
         return $this->hasMany(TimesheetEntry::class);
     }
 }
->>>>>>> 2b06f4214a1276acce479a4c988985fbfc7914fc
