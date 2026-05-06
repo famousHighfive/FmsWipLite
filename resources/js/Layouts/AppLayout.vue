@@ -4,19 +4,32 @@ import { Link, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
+import {
+  LayoutDashboard,
+  Users,
+  Megaphone,
+  Calendar,
+  Clock,
+  BarChart3,
+  Settings,
+  UserPlus,
+  Briefcase,
+  CheckSquare
+} from 'lucide-vue-next';
 
 const page = usePage();
 const activeMainMenu = ref('dashboard');
+const sidebarCollapsed = ref(false);
 
 const menuConfig = {
   admin: {
     main: [
-      { id: 'dashboard', label: 'Tableau de bord', icon: 'dashboard' },
-      { id: 'employees', label: 'Employés', icon: 'users' },
-      { id: 'campaigns', label: 'Campagnes', icon: 'megaphone' },
-      { id: 'planning', label: 'Planning', icon: 'calendar' },
-      { id: 'timesheets', label: 'Feuilles de temps', icon: 'clock' },
-      { id: 'reports', label: 'Rapports', icon: 'chart-bar' },
+      { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+      { id: 'employees', label: 'Employés', icon: Users },
+      { id: 'campaigns', label: 'Campagnes', icon: Megaphone },
+      { id: 'planning', label: 'Planning', icon: Calendar },
+      { id: 'timesheets', label: 'Feuilles de temps', icon: Clock },
+      { id: 'reports', label: 'Rapports', icon: BarChart3 },
     ],
     sub: {
       dashboard: [
@@ -46,11 +59,11 @@ const menuConfig = {
   },
   cp: {
     main: [
-      { id: 'dashboard', label: 'Tableau de bord', icon: 'dashboard' },
-      { id: 'employees', label: 'Équipe', icon: 'users' },
-      { id: 'campaigns', label: 'Campagnes', icon: 'megaphone' },
-      { id: 'planning', label: 'Planning', icon: 'calendar' },
-      { id: 'timesheets', label: 'Feuilles de temps', icon: 'clock' },
+      { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+      { id: 'employees', label: 'Équipe', icon: Users },
+      { id: 'campaigns', label: 'Campagnes', icon: Megaphone },
+      { id: 'planning', label: 'Planning', icon: Calendar },
+      { id: 'timesheets', label: 'Feuilles de temps', icon: Clock },
     ],
     sub: {
       dashboard: [
@@ -72,9 +85,9 @@ const menuConfig = {
   },
   sup: {
     main: [
-      { id: 'dashboard', label: 'Tableau de bord', icon: 'dashboard' },
-      { id: 'team', label: 'Mon équipe', icon: 'users' },
-      { id: 'timesheets', label: 'Feuilles de temps', icon: 'clock' },
+      { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+      { id: 'team', label: 'Mon équipe', icon: Users },
+      { id: 'timesheets', label: 'Feuilles de temps', icon: Clock },
     ],
     sub: {
       dashboard: [
@@ -90,9 +103,9 @@ const menuConfig = {
   },
   tc: {
     main: [
-      { id: 'dashboard', label: 'Tableau de bord', icon: 'dashboard' },
-      { id: 'timesheets', label: 'Ma feuille de temps', icon: 'clock' },
-      { id: 'planning', label: 'Mon planning', icon: 'calendar' },
+      { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+      { id: 'timesheets', label: 'Ma feuille de temps', icon: Clock },
+      { id: 'planning', label: 'Mon planning', icon: Calendar },
     ],
     sub: {
       dashboard: [
@@ -117,44 +130,54 @@ const currentMenu = computed(() => {
 const currentSubMenu = computed(() => {
   return currentMenu.value.sub[activeMainMenu.value] || [];
 });
+
+const handleMainMenuClick = (itemId) => {
+  activeMainMenu.value = itemId;
+  sidebarCollapsed.value = currentSubMenu.value.length > 0;
+};
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-100">
+  <div class="flex h-screen bg-emerald-50">
     <!-- Sidebar principale -->
-    <aside class="w-64 bg-gray-900 text-white flex flex-col">
-      <div class="p-4 border-b border-gray-700">
-        <Link :href="route('dashboard')" class="flex items-center gap-2">
-          <ApplicationLogo class="h-8 w-auto fill-current text-white" />
-          <span class="text-xl font-bold">WipLite</span>
+    <aside
+      :class="[
+        'bg-emerald-900 text-white flex flex-col transition-all duration-300',
+        sidebarCollapsed ? 'w-20' : 'w-64'
+      ]"
+    >
+      <div class="p-4 border-b border-emerald-800 flex items-center">
+        <Link :href="route('dashboard')" class="flex items-center gap-3">
+          <ApplicationLogo class="h-8 w-auto fill-current text-emerald-300" />
+          <span v-if="!sidebarCollapsed" class="text-xl font-bold text-emerald-100">WipLite</span>
         </Link>
       </div>
       <nav class="flex-1 p-4 space-y-2">
         <button
           v-for="item in currentMenu.main"
           :key="item.id"
-          @click="activeMainMenu = item.id"
+          @click="handleMainMenuClick(item.id)"
           :class="[
-            'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+            'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200',
             activeMainMenu === item.id
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/50'
+              : 'text-emerald-200 hover:bg-emerald-800 hover:text-white'
           ]"
         >
-          <span class="text-lg">{{ item.icon }}</span>
-          <span class="font-medium">{{ item.label }}</span>
+          <component :is="item.icon" class="w-6 h-6 flex-shrink-0" />
+          <span v-if="!sidebarCollapsed" class="font-medium">{{ item.label }}</span>
         </button>
       </nav>
-      <div class="p-4 border-t border-gray-700">
+      <div class="p-4 border-t border-emerald-800">
         <Dropdown align="left" width="48">
           <template #trigger>
-            <button class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">
-              <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+            <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-200 hover:bg-emerald-800 hover:text-white transition-all duration-200">
+              <div class="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0">
                 {{ page.props.auth.user?.name?.charAt(0)?.toUpperCase() || 'U' }}
               </div>
-              <div class="text-left flex-1">
+              <div v-if="!sidebarCollapsed" class="text-left flex-1">
                 <div class="font-medium text-sm">{{ page.props.auth.user?.name }}</div>
-                <div class="text-xs text-gray-400">{{ page.props.auth.role }}</div>
+                <div class="text-xs text-emerald-400">{{ page.props.auth.role }}</div>
               </div>
             </button>
           </template>
@@ -171,18 +194,23 @@ const currentSubMenu = computed(() => {
     </aside>
 
     <!-- Sidebar secondaire -->
-    <aside class="w-56 bg-white border-r border-gray-200 flex flex-col" v-if="currentSubMenu.length > 0">
-      <div class="p-4 border-b border-gray-200">
-        <h3 class="font-semibold text-gray-700">
+    <aside
+      class="bg-white border-r border-emerald-100 flex flex-col transition-all duration-300"
+      :class="[
+        currentSubMenu.length > 0 ? 'w-64' : 'w-0 opacity-0 overflow-hidden'
+      ]"
+    >
+      <div class="p-4 border-b border-emerald-100 bg-emerald-50">
+        <h3 class="font-bold text-emerald-800">
           {{ currentMenu.main.find(m => m.id === activeMainMenu)?.label }}
         </h3>
       </div>
-      <nav class="flex-1 p-4 space-y-1">
+      <nav class="flex-1 p-4 space-y-2">
         <Link
           v-for="item in currentSubMenu"
           :key="item.href"
           :href="item.href"
-          class="block px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+          class="block px-4 py-3 rounded-xl text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 font-medium transition-all duration-200"
         >
           {{ item.label }}
         </Link>
@@ -190,11 +218,11 @@ const currentSubMenu = computed(() => {
     </aside>
 
     <!-- Contenu principal -->
-    <main class="flex-1 flex flex-col overflow-hidden">
-      <header class="bg-white border-b border-gray-200 px-6 py-4">
+    <main class="flex-1 flex flex-col overflow-hidden bg-emerald-50">
+      <header class="bg-white border-b border-emerald-100 px-8 py-5 shadow-sm">
         <slot name="header" />
       </header>
-      <div class="flex-1 overflow-auto p-6">
+      <div class="flex-1 overflow-auto p-8">
         <slot />
       </div>
     </main>
