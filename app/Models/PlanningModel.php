@@ -23,7 +23,7 @@ class PlanningModel extends Model
         'created_by',
     ];
 
-    public function planningAssignments()
+    public function assignments()
     {
         return $this->hasMany(PlanningAssignment::class);
     }

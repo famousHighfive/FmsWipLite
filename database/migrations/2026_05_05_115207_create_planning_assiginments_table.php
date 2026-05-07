@@ -21,10 +21,9 @@ return new class extends Migration {
             $table->date('end_date');
 
             // Statut et validation
-            $table->string('status')->default('en attente');
+            $table->enum('status', ['en attente', 'validé', 'suspendu'])->default('en attente');
             $table->foreignId('validated_by')->nullable()->constrained('employees')->onDelete('set null');
             $table->timestamp('validated_at')->nullable();
-
             $table->timestamps(); // Gère created_at et updated_at
         });
     }

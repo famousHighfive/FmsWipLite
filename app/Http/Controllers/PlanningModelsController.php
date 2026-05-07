@@ -16,7 +16,8 @@ class PlanningModelsController extends Controller
     public function index()
     {
         return Inertia::render('Planning/Models/Index', [
-            'planningModels' => PlanningModel::withCount('planningAssignments')
+            'planningModels' => PlanningModel::with('creator:id,name')
+                ->withCount('assignments')
                 ->latest()
                 ->get(),
 
