@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PlanningAssignmentController;
 use App\Http\Controllers\PlanningModelsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
@@ -56,7 +57,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->middleware('role:admin')->name('employees.index');
 
     Route::resource('users', UserController::class)->middleware('role:admin');
-    Route::resource('planning/models', PlanningModelsController::class)->middleware('role:admin')->names('planning.models');
+
+    // Planning Models
+    Route::resource('planning/models', PlanningModelsController::class)->middleware('role:cp,admin')->names('planning.models');
+
+    // Planning Assignments
+    Route::resource('planning/assignments', PlanningAssignmentController::class)->middleware('role:cp,admin')->names('planning.assignments');
+
+    // Additional planning routes that match sidebar
+    Route::get('planning/validate', [PlanningAssignmentController::class, 'validation'])->middleware('role:cp,admin')->name('planning.validate');
+    Route::get('planning/history', [PlanningAssignmentController::class, 'history'])->middleware('role:cp,admin')->name('planning.history');
+    Route::post('planning/assignments/{id}/validate', [PlanningAssignmentController::class, 'validateAssignment'])->middleware('role:cp,admin')->name('planning.assignments.validate');
+    Route::post('planning/assignments/bulk-validate', [PlanningAssignmentController::class, 'bulkValidate'])->middleware('role:cp,admin')->name('planning.assignments.bulk-validate');
+    Route::post('planning/assignments/{id}/suspend', [PlanningAssignmentController::class, 'suspendAssignment'])->middleware('role:cp,admin')->name('planning.assignments.suspend');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

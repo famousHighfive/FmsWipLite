@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Employee extends Model
 {
@@ -16,7 +17,7 @@ class Employee extends Model
         'birth_date', 'phone', 'email', 'address',
         'position_id', 'salary_base', 'status'
     ];
-    //
+    
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);
@@ -25,5 +26,10 @@ class Employee extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function planningAssignments(): HasMany
+    {
+        return $this->hasMany(PlanningAssignment::class);
     }
 }

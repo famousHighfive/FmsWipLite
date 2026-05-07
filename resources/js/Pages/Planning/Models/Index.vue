@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from "vue";
-import { Head, useForm } from "@inertiajs/vue3";
+import { Head, useForm, router } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
@@ -16,7 +16,21 @@ import {
     X,
     Clock,
     UserCog,
+    Users,
+    CheckCircle,
+    History,
 } from "lucide-vue-next";
+
+const tabs = [
+    { name: "Modèles", href: route('planning.models.index'), icon: Clock },
+    { name: "Affectations", href: route('planning.assignments.index'), icon: Users },
+    { name: "Validation", href: route('planning.assignments.validation'), icon: CheckCircle },
+    { name: "Historique", href: route('planning.assignments.history'), icon: History },
+];
+
+const currentTab = computed(() => {
+    return tabs.find(tab => tab.href === window.location.pathname)?.name || "Modèles";
+});
 
 const props = defineProps({
     planningModels: Array,
@@ -109,27 +123,46 @@ const weekDays = [
 
     <AppLayout>
         <template #header>
-            <div class="flex justify-between items-center gap-8 mb-6">
-                <div class="min-w-0">
-                    <h2 class="text-xl font-black text-slate-800 truncate">
-                        Paramétrage Plannings
-                    </h2>
-                    <p
-                        class="text-blue-500/70 text-[10px] font-bold uppercase tracking-widest mt-1"
+            <div class="mb-6">
+                <div class="flex justify-between items-center gap-8 mb-4">
+                    <div class="min-w-0">
+                        <h2 class="text-xl font-black text-slate-800 truncate">
+                            Paramétrage Plannings
+                        </h2>
+                        <p
+                            class="text-blue-500/70 text-[10px] font-bold uppercase tracking-widest mt-1"
+                        >
+                            Gérez vos structures horaires
+                        </p>
+                    </div>
+
+                    <Button
+                        @click="openCreateModal"
+                        class="flex-shrink-0 !bg-blue-600 !border-none !rounded-xl !px-6 !py-3 flex items-center gap-2 shadow-lg shadow-blue-100 hover:!bg-blue-700 transition-all"
                     >
-                        Gérez vos structures horaires
-                    </p>
+                        <Plus class="w-4 h-4 text-white" />
+                        <span class="font-bold text-white text-sm whitespace-nowrap"
+                            >Nouveau modèle</span
+                        >
+                    </Button>
                 </div>
 
-                <Button
-                    @click="openCreateModal"
-                    class="flex-shrink-0 !bg-blue-600 !border-none !rounded-xl !px-6 !py-3 flex items-center gap-2 shadow-lg shadow-blue-100 hover:!bg-blue-700 transition-all"
-                >
-                    <Plus class="w-4 h-4 text-white" />
-                    <span class="font-bold text-white text-sm whitespace-nowrap"
-                        >Nouveau modèle</span
+                <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.name"
+                        @click="router.visit(tab.href)"
+                        class="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
+                        :class="
+                            currentTab === tab.name
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                        "
                     >
-                </Button>
+                        <tab.icon class="w-4 h-4" />
+                        <span>{{ tab.name }}</span>
+                    </button>
+                </div>
             </div>
         </template>
 
