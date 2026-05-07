@@ -23,11 +23,11 @@ return new class extends Migration {
 
             // Validation
             $table->foreignId('validated_by')
-
+                ->nullable()
                   ->constrained('employees')
                   ->nullOnDelete();
 
-            $table->timestamp('validated_at');
+            $table->timestamp('validated_at')->nullable();
 
             $table->timestamps();
         });
