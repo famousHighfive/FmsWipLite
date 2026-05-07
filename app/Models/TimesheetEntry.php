@@ -35,7 +35,6 @@ class TimesheetEntry extends Model
     {
         return $this->belongsTo(Timesheet::class);
     }
-
     public function calculateHours()
     {
         if ($this->check_in && $this->check_out) {

@@ -6,65 +6,76 @@ use App\Http\Requests\StoreTimesheetRequest;
 use App\Http\Requests\UpdateTimesheetRequest;
 use App\Models\Timesheet;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 
-class TimesheetController extends Controller
+class TimesheetController extends Controller 
 {
     /**
-     * Display a listing of the resource.
+     * Affiche la liste des feuilles de temps (Calendrier).
      */
     public function index()
     {
-  //
-        $calendar = Timesheet::with(['employee' , 'validator', 'entries'])->latest()->get();
+        $calendar = Timesheet::with(['employee', 'validator', 'entries'])
+            ->latest()
+            ->get();
+
         return Inertia::render('Timesheets/calendar', [
             'calendar' => $calendar
         ]);
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Affiche le formulaire de création.
      */
-    public function create(){
-
+    public function create()
+    {
+        return Inertia::render('Timesheets/Create');
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Enregistre une nouvelle ressource.
      */
     public function store(StoreTimesheetRequest $request)
     {
-        //
+        Timesheet::create($request->validated());
+        return redirect()->route('timesheets.index');
     }
 
     /**
-     * Display the specified resource.
+     * Affiche une ressource spécifique.
      */
     public function show(Timesheet $timesheet)
     {
-        //
+        return Inertia::render('Timesheets/Show', [
+            'timesheet' => $timesheet->load(['employee', 'validator', 'entries'])
+        ]);
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Affiche le formulaire d'édition.
      */
     public function edit(Timesheet $timesheet)
     {
-        //
+        return Inertia::render('Timesheets/Edit', [
+            'timesheet' => $timesheet
+        ]);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Met à jour la ressource.
      */
     public function update(UpdateTimesheetRequest $request, Timesheet $timesheet)
     {
-        //
+        $timesheet->update($request->validated());
+        return redirect()->route('timesheets.index');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Supprime la ressource.
      */
     public function destroy(Timesheet $timesheet)
     {
-        //
+        $timesheet->delete();
+        return redirect()->route('timesheets.index');
     }
 }
