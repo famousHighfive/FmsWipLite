@@ -53,4 +53,8 @@ class TimesheetEntry extends Model
     {
         return !is_null($this->absence_type);
     }
+    public function logs()
+{
+    return $this->morphMany(ActivityLog::class, 'model');
+}
 }

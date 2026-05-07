@@ -45,8 +45,13 @@ class PlanningAssignment extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+ 
     public function validator()
-    {
-        return $this->belongsTo(User::class, 'validated_by');
-    }
+{
+    return $this->belongsTo(Employee::class, 'validated_by');
+}
+public function logs()
+{
+    return $this->morphMany(ActivityLog::class, 'model');
+}
 }

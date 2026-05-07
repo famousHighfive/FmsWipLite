@@ -45,4 +45,8 @@ class Notification extends Model
     {
         return $query->whereNull('read_at');
     }
+    public function logs()
+{
+    return $this->morphMany(ActivityLog::class, 'model');
+}
 }

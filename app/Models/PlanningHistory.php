@@ -18,6 +18,10 @@ class PlanningHistory extends Model
         'changed_by',
         'reason',
     ];
+    public function logs()
+{
+    return $this->morphMany(ActivityLog::class, 'model');
+}
 
     protected $casts = [
         'created_at' => 'datetime',
