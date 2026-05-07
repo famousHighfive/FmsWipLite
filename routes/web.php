@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PlanningModelsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -55,6 +56,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->middleware('role:admin')->name('employees.index');
 
     Route::resource('users', UserController::class)->middleware('role:admin');
+    Route::resource('planning/models', PlanningModelsController::class)->middleware('role:admin')->names('planning.models');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
