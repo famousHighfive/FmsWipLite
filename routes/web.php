@@ -1,50 +1,60 @@
 <?php
 
-use App\Http\Controllers\PlanningModelsController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
-use App\Models\PlanningModel;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Redirection intelligente selon le rôle dès l'arrivée sur /
 Route::get('/', function () {
-    return Inertia::render('Auth/Login', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    if (auth()->check()) {
+        $role = auth()->user()->role?->name;
+        return redirect()->route(match ($role) {
+            'admin' => 'dashboard.admin',
+            'cp'    => 'dashboard.cp',
+            'sup'   => 'dashboard.sup',
+            'tc'    => 'dashboard.tc',
+            default => 'dashboard.tc',
+        });
+    }
+    return redirect()->route('login');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
+    // Route /dashboard redirige aussi selon le rôle (évite le bug TeleConseiller pour CP)
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard/TeleConseiller');
+        $role = auth()->user()->role?->name;
+        return redirect()->route(match ($role) {
+            'admin' => 'dashboard.admin',
+            'cp'    => 'dashboard.cp',
+            'sup'   => 'dashboard.sup',
+            'tc'    => 'dashboard.tc',
+            default => 'dashboard.tc',
+        });
     })->name('dashboard');
 
     Route::get('/dashboard/admin', function () {
         return Inertia::render('Dashboard/Admin');
-    })->name('dashboard.admin');
+    })->middleware('role:admin')->name('dashboard.admin');
 
     Route::get('/dashboard/cp', function () {
         return Inertia::render('Dashboard/ChefPlateau');
-    })->name('dashboard.cp');
+    })->middleware('role:cp,admin')->name('dashboard.cp');
 
     Route::get('/dashboard/sup', function () {
         return Inertia::render('Dashboard/Superviseur');
-    })->name('dashboard.sup');
+    })->middleware('role:sup,admin')->name('dashboard.sup');
 
     Route::get('/dashboard/tc', function () {
         return Inertia::render('Dashboard/TeleConseiller');
-    })->name('dashboard.tc');
+    })->middleware('role:tc,admin')->name('dashboard.tc');
 
     Route::get('/employees', function () {
         return Inertia::render('Employees/Index');
-    })->name('employees.index');
+    })->middleware('role:admin')->name('employees.index');
 
-
-    Route::resource('users', UserController::class);
-    Route::resource('planning/models', PlanningModelsController::class)->names('planning.models');
+    Route::resource('users', UserController::class)->middleware('role:admin');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
