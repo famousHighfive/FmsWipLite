@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PlanningAssignmentController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\PlanningModelsController;
@@ -66,7 +67,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Routes pour la gestion des utilisateurs
     Route::resource('users', UserController::class);
     Route::resource('users', UserController::class)->middleware('role:admin');
-    Route::resource('planning/models', PlanningModelsController::class)->middleware('role:admin')->names('planning.models');
+
+    // Planning Models
+    Route::resource('planning/models', PlanningModelsController::class)->middleware('role:cp,admin')->names('planning.models');
+
+    // Planning Assignments
+    Route::resource('planning/assignments', PlanningAssignmentController::class)->middleware('role:cp,admin')->names('planning.assignments');
+
+    // Additional planning routes that match sidebar
+    Route::get('planning/validate', [PlanningAssignmentController::class, 'validation'])->middleware('role:cp,admin')->name('planning.validate');
+    Route::get('planning/history', [PlanningAssignmentController::class, 'history'])->middleware('role:cp,admin')->name('planning.history');
+    Route::post('planning/assignments/{id}/validate', [PlanningAssignmentController::class, 'validateAssignment'])->middleware('role:cp,admin')->name('planning.assignments.validate');
+    Route::post('planning/assignments/bulk-validate', [PlanningAssignmentController::class, 'bulkValidate'])->middleware('role:cp,admin')->name('planning.assignments.bulk-validate');
+    Route::post('planning/assignments/validate-all', [PlanningAssignmentController::class, 'validateAll'])->middleware('role:cp,admin')->name('planning.assignments.validate-all');
+    Route::post('planning/assignments/{id}/suspend', [PlanningAssignmentController::class, 'suspendAssignment'])->middleware('role:cp,admin')->name('planning.assignments.suspend');
+    Route::post('planning/assignments/{id}/terminate', [PlanningAssignmentController::class, 'terminateAssignment'])->middleware('role:cp,admin')->name('planning.assignments.terminate');
 
     // Routes pour la gestion des affectations
     Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
