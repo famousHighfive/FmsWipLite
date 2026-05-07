@@ -114,8 +114,6 @@ const isHoveringSidebar = ref(false);
 
         { label: 'Modèles de planning',    href: '/planning/models' },
 
-        { label: 'Créer un planning',      href: '/planning/create' },
-
         { label: 'Affectation des plannings', href: '/planning/assignments' },
 
         { label: 'Validation des plannings',  href: '/planning/validate' },

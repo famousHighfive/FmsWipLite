@@ -20,16 +20,14 @@ class PlanningAssignmentSeeder extends Seeder
             return;
         }
 
-        // Assigner le planning 35h à tous les TC
+        // Assigner le planning 35h à tous les TC (status en attente)
         foreach ($tcs as $tc) {
             PlanningAssignment::create([
                 'planning_model_id' => $model35h->id,
                 'employee_id'       => $tc->id,
                 'start_date'        => now()->startOfMonth(),
                 'end_date'          => now()->addMonths(6),
-                'status'            => 'validé',
-                'validated_by'      => $validator?->id,
-                'validated_at'      => now(),
+                'status'            => 'en attente',
             ]);
         }
     }

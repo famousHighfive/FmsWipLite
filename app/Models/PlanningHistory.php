@@ -9,6 +9,8 @@ class PlanningHistory extends Model
 {
     use HasFactory;
     protected $table = 'planning_historys';
+    protected $table = 'planning_histories';
+    public $timestamps = false;
 
     protected $fillable = [
         'planning_assignment_id',
@@ -16,11 +18,23 @@ class PlanningHistory extends Model
         'new_status',
         'changed_by',
         'reason',
-        'created_at',
     ];
     public function logs()
 {
     return $this->morphMany(ActivityLog::class, 'model');
 }
 
+    protected $casts = [
+        'created_at' => 'datetime',
+    ];
+
+    public function planningAssignment()
+    {
+        return $this->belongsTo(PlanningAssignment::class);
+    }
+
+    public function changedBy()
+    {
+        return $this->belongsTo(User::class, 'changed_by');
+    }
 }

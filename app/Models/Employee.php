@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -43,46 +44,7 @@ class Employee extends Model
         self::STATUS_INACTIF,
         self::STATUS_SUSPENDU,
     ];
-
-    // -------------------------------------------------------
-    // Génération automatique du matricule
-    // -------------------------------------------------------
-
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::creating(function (Employee $employee) {
-            if (empty($employee->matricule)) {
-                $employee->matricule = self::generateMatricule();
-            }
-        });
-    }
-
-    /**
-     * Génère un matricule unique au format
-     */
-    public static function generateMatricule(): string
-    {
-        $prefix = 'EMP-' . now()->format('Ymd') . '-';
-        $last   = self::where('matricule', 'like', $prefix . '%')
-                      ->orderByDesc('matricule')
-                      ->value('matricule');
-
-        $next = $last
-            ? (int) substr($last, -4) + 1
-            : 1;
-
-        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
-    }
-
-    // -------------------------------------------------------
-    // RELATIONS
-    // -------------------------------------------------------
-
-    /**
-     * Le poste actuel de l'employé
-     */
+    
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);
@@ -146,7 +108,8 @@ class Employee extends Model
     }
 
     public function logs()
+    public function planningAssignments(): HasMany
     {
-        return $this->morphMany(ActivityLog::class, 'model');
+        return $this->hasMany(PlanningAssignment::class);
     }
 }

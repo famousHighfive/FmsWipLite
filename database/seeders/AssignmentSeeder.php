@@ -11,39 +11,33 @@ use Illuminate\Database\Seeder;
 
 class AssignmentSeeder extends Seeder
 {
-    public function run(): void
-    {
-        // On récupère nos données de base
-        $campaigns = Campaign::all();
-        $positions = Position::all();
-        $employees = Employee::all();
+ public function run(): void
+{
+    $campaigns = Campaign::all();
+    // On récupère tous les superviseurs
+    $superviseurs = Employee::whereHas('position', function($q) {
+        $q->where('code', 'SUP');
+    })->get();
 
-        if ($employees->isEmpty() || $campaigns->isEmpty()) {
-            $this->command->error("D'abord, remplissez les tables employees et campaigns !");
-            return;
-        }
+    // On récupère tous les téléconseillers
+    $teleconseillers = Employee::whereHas('position', function($q) {
+        $q->where('code', 'TC');
+    })->get();
 
-        // On identifie un manager potentiel (ex: un Chef Plateau ou Superviseur)
-        $manager = Employee::whereHas('position', function($q) {
-            $q->whereIn('code', ['CP', 'SUP']);
-        })->first() ?? $employees->first();
+    if ($superviseurs->isEmpty()) {
+        $this->command->error("Il n'y a pas de Superviseurs pour gérer les TC !");
+        return;
+    }
 
-        // 1. On assigne manuellement quelques employés pour avoir des données propres
-        foreach ($employees->take(10) as $emp) {
-            Assignment::create([
-                'employee_id' => $emp->id,
-                'campaign_id' => $campaigns->random()->id,
-                'manager_id'  => $manager->id,
-                'position_id' => $emp->position_id, // On garde sa position d'origine
-                'status'      => 'actif',
-                'start_date'  => now()->subMonths(2),
-                'end_date'    => null,
-            ]);
-        }
-
-        // 2. On génère 15 autres affectations aléatoires (historique/terminé)
-        Assignment::factory(15)->create([
-            'status' => 'terminé'
+    foreach ($teleconseillers as $tc) {
+        Assignment::create([
+            'employee_id' => $tc->id,
+            'campaign_id' => $campaigns->random()->id,
+            'manager_id'  => $superviseurs->random()->id, // Assigne un SUP aléatoire
+            'position_id' => $tc->position_id,
+            'status'      => 'actif',
+            'start_date'  => now()->subMonths(2),
         ]);
     }
+}
 }
