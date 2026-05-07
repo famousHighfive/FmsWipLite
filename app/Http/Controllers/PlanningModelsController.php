@@ -2,65 +2,97 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\planning_models;
-use App\Http\Requests\Storeplanning_modelsRequest;
-use App\Http\Requests\Updateplanning_modelsRequest;
+use App\Models\PlanningAssignment;
+use App\Models\PlanningModel;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class PlanningModelsController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Affiche la liste des modèles et les affectations.
      */
     public function index()
     {
-        //
+        return Inertia::render('Planning/Models/Index', [
+            'planningModels' => PlanningModel::withCount('planningAssignments')
+                ->latest()
+                ->get(),
+
+            // Récupération des affectations réelles avec les relations
+            'activeAssignments' => PlanningAssignment::with(['employee.user', 'planningModel'])
+                ->where('status', 'active') // Optionnel : filtrer par statut
+                ->latest()
+                ->get()
+                ->map(fn($assign) => [
+                    'id' => $assign->id,
+                    'user_name' => $assign->employee->user->name, // On suppose que Employee a une relation user
+                    'model_name' => $assign->planningModel->name,
+                    'start_date' => $assign->start_date->format('Y-m-d'), // Assure-toi qu'ils sont castés en date
+                    'end_date' => $assign->end_date ? $assign->end_date->format('Y-m-d') : 'Indéfinie',
+                ]),
+        ]);
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Enregistre un nouveau modèle.
      */
-    public function create()
+    public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'monday_hours' => 'required|numeric|min:0|max:24',
+            'tuesday_hours' => 'required|numeric|min:0|max:24',
+            'wednesday_hours' => 'required|numeric|min:0|max:24',
+            'thursday_hours' => 'required|numeric|min:0|max:24',
+            'friday_hours' => 'required|numeric|min:0|max:24',
+            'saturday_hours' => 'required|numeric|min:0|max:24',
+            'sunday_hours' => 'required|numeric|min:0|max:24',
+            'total_hours' => 'required|numeric|min:0',
+        ]);
+
+        $validated['created_by'] = Auth::id();
+
+        PlanningModel::create($validated);
+
+        return redirect()->back()->with('success', 'Modèle créé avec succès.');
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Met à jour un modèle existant.
      */
-    public function store(Storeplanning_modelsRequest $request)
+    public function update(Request $request, PlanningModel $model)
     {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'monday_hours' => 'required|numeric|min:0|max:24',
+            'tuesday_hours' => 'required|numeric|min:0|max:24',
+            'wednesday_hours' => 'required|numeric|min:0|max:24',
+            'thursday_hours' => 'required|numeric|min:0|max:24',
+            'friday_hours' => 'required|numeric|min:0|max:24',
+            'saturday_hours' => 'required|numeric|min:0|max:24',
+            'sunday_hours' => 'required|numeric|min:0|max:24',
+            'total_hours' => 'required|numeric|min:0',
+        ]);
+
+        $model->update($validated);
+
+        return redirect()->back()->with('success', 'Modèle mis à jour avec succès.');
     }
 
     /**
-     * Display the specified resource.
+     * Supprime un modèle.
      */
-    public function show(planning_models $planning_models)
+    public function destroy(PlanningModel $model)
     {
-        //
-    }
+        if ($model->planningAssignments()->exists()) {
+            return redirect()->back()->with('error', 'Ce modèle est utilisé par des employés.');
+        }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(planning_models $planning_models)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Updateplanning_modelsRequest $request, planning_models $planning_models)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(planning_models $planning_models)
-    {
-        //
+        $model->delete();
+        return redirect()->back()->with('success', 'Modèle supprimé.');
     }
 }

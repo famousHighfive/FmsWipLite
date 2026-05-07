@@ -102,20 +102,24 @@ const handleDelete = (user) => {
             Affichage de {{ users.from }} à {{ users.to }} sur {{ users.total }} résultats
           </div>
           <div class="flex gap-2">
-            <Link
-              v-for="link in users.links"
-              :key="link.url"
-              :href="link.url"
-              :class="[
-                'px-3 py-1 rounded-lg text-sm font-medium transition-all',
-                link.active
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                  : link.url
-                    ? 'text-slate-700 hover:bg-blue-50'
-                    : 'text-slate-400 cursor-not-allowed'
-              ]"
-              v-html="link.label"
-            />
+            <template v-for="link in users.links" :key="link.url || Math.random()">
+              <Link
+                v-if="link.url"
+                :href="link.url"
+                :class="[
+                  'px-3 py-1 rounded-lg text-sm font-medium transition-all',
+                  link.active
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                    : 'text-slate-700 hover:bg-blue-50'
+                ]"
+                v-html="link.label"
+              />
+              <span
+                v-else
+                class="px-3 py-1 rounded-lg text-sm font-medium text-slate-400 cursor-not-allowed"
+                v-html="link.label"
+              />
+            </template>
           </div>
         </div>
       </div>

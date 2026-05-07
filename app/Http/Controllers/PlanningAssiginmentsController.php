@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\planning_assiginments;
 use App\Http\Requests\Storeplanning_assiginmentsRequest;
 use App\Http\Requests\Updateplanning_assiginmentsRequest;
+use App\Models\PlanningAssignment;
+use GuzzleHttp\Psr7\Request;
 
 class PlanningAssiginmentsController extends Controller
 {
@@ -27,7 +29,7 @@ class PlanningAssiginmentsController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Storeplanning_assiginmentsRequest $request)
+    public function store(Request $request)
     {
         //
     }
@@ -35,7 +37,7 @@ class PlanningAssiginmentsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(planning_assiginments $planning_assiginments)
+    public function show(PlanningAssignment $planning_assiginments)
     {
         //
     }

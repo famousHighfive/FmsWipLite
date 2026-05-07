@@ -31,7 +31,7 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:4',
+            'password' => 'required|string|min:8',
             'role_id' => 'required|exists:roles,id',
         ]);
 
@@ -70,7 +70,7 @@ class UserController extends Controller
 
         if ($request->filled('password')) {
             $request->validate([
-                'password' => 'string|min:4',
+                'password' => 'string|min:8',
             ]);
             $user->update([
                 'password' => Hash::make($request->password),
