@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         //
+           // Alias du middleware de vérification des rôles
+        $middleware->alias([
+            'role' => \App\Http\Middleware\CheckRole::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
