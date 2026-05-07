@@ -26,7 +26,6 @@ onMounted(()=>{
         <div class="py-12">
             <Toast/>
             <Button label="Value"/>
-           <Link href="/calendar">Calendar</Link>
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div
                     class="overflow-hidden bg-white shadow-sm sm:rounded-lg"

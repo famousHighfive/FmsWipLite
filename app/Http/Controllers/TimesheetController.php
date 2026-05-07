@@ -14,24 +14,18 @@ class TimesheetController extends Controller
      */
     public function index()
     {
-        //
-        // On charge les relations 'employee' et 'entries' via with().
-        // Les colonnes 'period_start' et 'period_end' sont incluses par défaut
-        // car elles appartiennent à la table 'timesheets'.
-        // Ne mettez JAMAIS de noms de colonnes dans with().
-        $calendar = Timesheet::with(['employee', 'entries'])->get();
-
+  //
+        $calendar = Timesheet::with(['employee' , 'validator', 'entries'])->latest()->get();
         return Inertia::render('Timesheets/calendar', [
-            'calendar' => $calendar,
+            'calendar' => $calendar
         ]);
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
-    {
-        //
+    public function create(){
+
     }
 
     /**
