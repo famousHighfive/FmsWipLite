@@ -263,7 +263,7 @@ const confirmDelete = (employee) => {
     <AppLayout>
         <Toast />
         <ConfirmDialog />
-
+        
         <div class="card">
             <!-- TOOLBAR -->
             <Toolbar class="mb-6">

@@ -10,6 +10,7 @@ class EmployeeHistory extends Model
     use HasFactory;
 
     protected $table = 'employee_histories';
+    const UPDATED_AT = null;
 
     protected $fillable = [
         'employee_id',
@@ -33,6 +34,22 @@ class EmployeeHistory extends Model
         return $this->belongsTo(Employee::class);
     }
 
+     /**
+     * Ancien poste
+     */
+    public function oldPosition()
+    {
+        return $this->belongsTo(Position::class, 'old_position_id');
+    }
+ 
+    /**
+     * Nouveau poste
+     */
+    public function newPosition()
+    {
+        return $this->belongsTo(Position::class, 'new_position_id');
+    }
+
     /**
      * L'utilisateur qui a effectué la modification
      */
@@ -40,9 +57,10 @@ class EmployeeHistory extends Model
     {
         return $this->belongsTo(User::class, 'changed_by');
     }
-    //
+    
+    
     public function logs()
-{
-    return $this->morphMany(ActivityLog::class, 'model');
-}
+    {
+        return $this->morphMany(ActivityLog::class, 'model');
+    }
 }

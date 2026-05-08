@@ -10,6 +10,7 @@ use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AssignmentController; // Importation du contrôleur d'affectations
+use App\Http\Controllers\PlanningAssignmentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -59,11 +60,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard/TeleConseiller');
     })->middleware('role:tc,admin')->name('dashboard.tc');
 
-    Route::get('/employees', function () {
-        return Inertia::render('Employees/Index');
-    })->middleware('role:admin')->name('employees.index');
+    
     Route::get('/users/roles', [RoleController::class, 'index'])
-            ->name('roles.index');
+        ->name('roles.index');
 
     // Routes pour la gestion des utilisateurs
     Route::resource('users', UserController::class);
@@ -94,9 +93,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::resource('/employees', EmployeeController::class);
-    Route::resource('/positions', PositionController::class)->only(['index', 'show']);
-    Route::get('/employees/{employee}/history', [EmployeeController::class, 'history'])->name('employees.history');
+    Route::get('/employees/history',    [EmployeeController::class, 'history'])->name('employees.history');//r
+    Route::resource('/employees', EmployeeController::class);//r
+    Route::resource('/positions', PositionController::class)->only(['index', 'show']);//r
+
     Route::middleware(['role:admin'])->group(function () {
 
         // USERS
@@ -179,8 +179,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/export/excel', [ReportingController::class, 'exportExcel']);
     });
-
 });
 
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
