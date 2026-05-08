@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Link, usePage, Head } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
@@ -25,6 +25,25 @@ import {
 const page = usePage();
 const activeMainMenu = ref('dashboard');
 const isHoveringSidebar = ref(false);
+
+const findActiveMenu = () => {
+  const currentPath = page.url.split('?')[0];
+  const role = page.props.auth?.role;
+  const config = menuConfig[role] ?? menuConfig.tc;
+  
+  for (const [menuId, subMenus] of Object.entries(config.sub)) {
+    if (subMenus.some(sub => {
+      if (sub.href === '/') return currentPath === '/';
+      return currentPath.startsWith(sub.href);
+    })) {
+      activeMainMenu.value = menuId;
+      return;
+    }
+  }
+};
+
+onMounted(findActiveMenu);
+watch(() => page.url, findActiveMenu);
 
  const menuConfig = {
 
@@ -501,10 +520,20 @@ const sidebarWidth = computed(() => (isHoveringSidebar.value || !hasSubMenu.valu
           v-for="item in currentSubMenu"
           :key="item.href"
           :href="item.href"
-          class="flex items-center justify-between group px-4 py-3.5 rounded-2xl text-slate-600 hover:bg-blue-600 hover:text-white transition-all duration-200"
+          class="flex items-center justify-between group px-4 py-3.5 rounded-2xl transition-all duration-200"
+          :class="[
+            (page.url === item.href || (item.href !== '/' && page.url.startsWith(item.href)))
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-600 hover:bg-blue-50 hover:text-blue-600'
+          ]"
         >
           <span class="text-[15px] font-bold tracking-tight">{{ item.label }}</span>
-          <div class="w-1.5 h-1.5 rounded-full bg-blue-200 group-hover:bg-white transition-colors"></div>
+          <div :class="[
+            'w-1.5 h-1.5 rounded-full transition-colors',
+            (page.url === item.href || (item.href !== '/' && page.url.startsWith(item.href)))
+              ? 'bg-white'
+              : 'bg-blue-200 group-hover:bg-blue-600'
+          ]"></div>
         </Link>
       </nav>
     </aside>

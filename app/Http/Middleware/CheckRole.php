@@ -17,13 +17,9 @@ class CheckRole
     {
         $user = $request->user();
 
-        if (!$user || !$user->role) {
-            abort(403, 'Accès non autorisé.');
-        }
-
-        if (!in_array($user->role->name, $roles)) {
+        if (!$user || !$user->hasRole($roles)) {
             // Rediriger vers le bon dashboard plutôt qu'une page 403 brute
-            $role = $user->role->name;
+            $role = $user->role?->name;
             $route = match ($role) {
                 'admin' => 'dashboard.admin',
                 'cp'    => 'dashboard.cp',

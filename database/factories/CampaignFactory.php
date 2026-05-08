@@ -18,7 +18,7 @@ class CampaignFactory extends Factory
             'description' => $this->faker->paragraph(),
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'status' => $this->faker->randomElement(['active', 'inactive', 'terminée']),
+            'status' => $this->faker->randomElement(['active', 'inactive', 'terminee']),
         ];
     }
 }

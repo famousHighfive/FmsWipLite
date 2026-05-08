@@ -28,11 +28,15 @@ class DatabaseSeeder extends Seeder
         // On s'assure qu'il a le rôle 'admin'
         $adminRole = Role::where('name', 'admin')->first();
 
-        $adminUser = User::factory()->create([
-            'name' => 'Admin Test',
-            'email' => 'admin@example.com',
-            'role_id' => $adminRole->id,
-        ]);
+        $adminUser = User::where('email', 'admin@example.com')->first();
+        
+        if (!$adminUser) {
+            $adminUser = User::factory()->create([
+                'name' => 'Admin Test',
+                'email' => 'admin@example.com',
+                'role_id' => $adminRole->id,
+            ]);
+        }
 
         // 3. Les données dépendantes
         $this->call([

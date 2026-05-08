@@ -33,7 +33,9 @@ class ReportingController extends Controller
                 'assignments' => Assignment::where('status', 'actif')->count(),
                 'workedHours' => TimesheetEntry::sum('total_hours'),
                 'overtimeHours' => TimesheetEntry::sum('overtime_hours'),
+
                 'pendingTimesheets' => Timesheet::where('status', 'soumis')->count(),
+
             ],
 
             'campaignStats' => Campaign::withCount(['assignments' => function($query) {
@@ -43,8 +45,9 @@ class ReportingController extends Controller
             ->take(5)
             ->get(),
 
-            'employeeStats' => Employee::withSum('user.timesheets.entries', 'total_hours')
-                ->withSum('user.timesheets.entries', 'planned_hours')
+            'employeeStats' => Employee::withSum('timesheetEntries', 'total_hours')
+                ->withSum('timesheetEntries', 'planned_hours')
+                ->with('position')
                 ->latest()
                 ->take(5)
                 ->get(),
@@ -99,68 +102,23 @@ class ReportingController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | STATISTIQUES GÉNÉRALES
-    |--------------------------------------------------------------------------
-    */
-
-    public function generalStats()
-    {
-        return Inertia::render('Dashboard/Statistiques', [
-
-            'campaigns' => Campaign::withCount('assignments')->get(),
-
-            'employees' => Employee::latest()->take(10)->get(),
-
-            'workedHours' => TimesheetEntry::sum('total_hours'),
-
-            'plannedHours' => TimesheetEntry::sum('planned_hours'),
-
-            'overtimeHours' => TimesheetEntry::sum('overtime_hours'),
-        ]);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | ALERTES & NOTIFICATIONS
-    |--------------------------------------------------------------------------
-    */
-
-    public function alerts()
-    {
-        return Inertia::render('Dashboard/Alerts', [
-
-            'logs' => ActivityLog::latest()
-                ->take(20)
-                ->get()
-        ]);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | DASHBOARD CHEF DE PLATEAU
     |--------------------------------------------------------------------------
     */
 
-    public function cp()
+    public function chefPlateau()
     {
         return Inertia::render('Dashboard/ChefPlateau', [
-
             'stats' => [
-
-                'supervisors' => Assignment::whereHas('position', function ($q) {
-                    $q->where('code', 'SUP');
-                })->count(),
-
-                'teleconseillers' => Assignment::whereHas('position', function ($q) {
-                    $q->where('code', 'TC');
-                })->count(),
-
-                'workedHours' => TimesheetEntry::sum('total_hours'),
-
-                'overtimeHours' => TimesheetEntry::sum('overtime_hours'),
-
-                'pendingTimesheets' => Timesheet::where('status', 'submitted')->count(),
-            ]
+                'totalCampaigns' => Campaign::count(),
+                'activeAgents' => Employee::where('status', 'actif')->count(),
+                'pendingPlannings' => Timesheet::where('status', 'soumis')->count(),
+                'workedHoursWeek' => (float) TimesheetEntry::where('date', '>=', now()->startOfWeek())->sum('total_hours'),
+            ],
+            'campaigns' => Campaign::withCount(['assignments' => function($query) {
+                $query->where('assignments.status', 'actif');
+            }])->get(),
+            'recentAlerts' => ActivityLog::latest()->take(10)->get()
         ]);
     }
 
@@ -170,97 +128,93 @@ class ReportingController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function sup()
+    public function superviseur()
     {
+        $manager = auth()->user()->employee;
+        
         return Inertia::render('Dashboard/Superviseur', [
-
             'stats' => [
-
-                'teamHours' => TimesheetEntry::sum('total_hours'),
-
-                'overtimeHours' => TimesheetEntry::sum('overtime_hours'),
-
-                'pendingTimesheets' => Timesheet::where('status', 'submitted')->count(),
-            ]
+                'myAgents' => Assignment::where('manager_id', $manager?->id)->where('status', 'actif')->count(),
+                'validatedTimesheets' => Timesheet::where('validated_by', $manager?->id)->count(),
+                'pendingMyValidation' => Timesheet::where('status', 'soumis')
+                    ->whereIn('employee_id', function($query) use ($manager) {
+                        $query->select('employee_id')->from('assignments')->where('manager_id', $manager?->id);
+                    })->count(),
+            ],
+            'myTeam' => Employee::whereIn('id', function($query) use ($manager) {
+                $query->select('employee_id')->from('assignments')->where('manager_id', $manager?->id)->where('status', 'actif');
+            })->with('position')->get(),
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | DASHBOARD TELECONSEILLER
+    | DASHBOARD TÉLÉCONSEILLER
     |--------------------------------------------------------------------------
     */
 
-    public function tc()
+    public function teleConseiller()
     {
+        $employee = auth()->user()->employee;
+        
         return Inertia::render('Dashboard/TeleConseiller', [
-
             'stats' => [
-
-                'workedHours' => TimesheetEntry::sum('total_hours'),
-
-                'plannedHours' => TimesheetEntry::sum('planned_hours'),
-
-                'overtimeHours' => TimesheetEntry::sum('overtime_hours'),
-            ]
+                'hoursWorkedMonth' => TimesheetEntry::whereHas('timesheet', function($q) use ($employee) {
+                    $q->where('employee_id', $employee?->id);
+                })->whereMonth('date', now()->month)->sum('total_hours'),
+                'pendingValidation' => Timesheet::where('employee_id', $employee?->id)->where('status', 'soumis')->count(),
+                'activeAssignment' => Assignment::where('employee_id', $employee?->id)->where('status', 'actif')->with('campaign')->first(),
+            ],
+            'recentTimesheets' => Timesheet::where('employee_id', $employee?->id)->latest()->take(5)->get(),
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | REPORTS
+    | STATISTIQUES GÉNÉRALES
     |--------------------------------------------------------------------------
     */
 
-    public function hr()
+    public function generalStats()
     {
-        return Inertia::render('Reports/Hr');
+        return Inertia::render('Dashboard/Statistiques', [
+            'summary' => [
+                'total_worked' => (float) TimesheetEntry::sum('total_hours'),
+                'total_planned' => (float) TimesheetEntry::sum('planned_hours'),
+                'total_overtime' => (float) TimesheetEntry::sum('overtime_hours'),
+                'avg_efficiency' => TimesheetEntry::where('planned_hours', '>', 0)
+                    ->select(DB::raw('AVG(total_hours / planned_hours) * 100 as avg_eff'))
+                    ->value('avg_eff') ?: 0
+            ],
+
+            'campaigns' => Campaign::withCount('assignments')
+                ->get()
+                ->map(function($campaign) {
+                    $campaign->assignments_employee_timesheets_entries_sum_total_hours = TimesheetEntry::whereIn('timesheet_id', function($q) use ($campaign) {
+                        $q->select('id')->from('timesheets')->whereIn('employee_id', function($q) use ($campaign) {
+                            $q->select('employee_id')->from('assignments')->where('campaign_id', $campaign->id);
+                        });
+                    })->sum('total_hours');
+                    return $campaign;
+                }),
+
+            'employees' => Employee::with('position')
+                ->withSum('timesheetEntries', 'total_hours')
+                ->withSum('timesheetEntries', 'overtime_hours')
+                ->orderByDesc('timesheet_entries_sum_total_hours')
+                ->take(15)
+                ->get(),
+
+            'dailyPerformance' => TimesheetEntry::select(
+                'date',
+                DB::raw('SUM(total_hours) as worked'),
+                DB::raw('SUM(planned_hours) as planned')
+            )
+            ->where('date', '>=', now()->subDays(30))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+        ]);
     }
 
-    public function campaigns()
-    {
-        return Inertia::render('Reports/Campaigns');
-    }
-
-    public function assignments()
-    {
-        return Inertia::render('Reports/Assignments');
-    }
-
-    public function timesheets()
-    {
-        return Inertia::render('Reports/Timesheets');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | ANALYTICS & KPI
-    |--------------------------------------------------------------------------
-    */
-
-    public function analytics()
-    {
-        return Inertia::render('Reports/Analytics');
-    }
-
-    public function kpis()
-    {
-        return Inertia::render('Reports/Kpis');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORTS
-    |--------------------------------------------------------------------------
-    */
-
-    // public function exportPdf()
-    // {
-    //     //
-    // }
-
-    // public function exportExcel()
-    // {
-    //     //
-    // }
 }

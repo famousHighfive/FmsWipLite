@@ -17,11 +17,11 @@ import {
 } from 'lucide-vue-next';
 
 const props = defineProps({ 
-    stats: Object, 
-    campaignStats: Array, 
-    employeeStats: Array,
-    planningGaps: Object,
-    monthlyEvolution: Array
+    stats: { type: Object, default: () => ({}) }, 
+    campaignStats: { type: Array, default: () => [] }, 
+    employeeStats: { type: Array, default: () => [] },
+    planningGaps: { type: Object, default: () => ({}) },
+    monthlyEvolution: { type: Array, default: () => [] }
 });
 
 // Chart Data & Options
@@ -36,27 +36,28 @@ onMounted(() => {
 });
 
 const initCharts = () => {
-    // Evolution Chart (Planned vs Worked)
-    evolutionChartData.value = {
-        labels: props.monthlyEvolution.map(item => item.month),
-        datasets: [
-            {
-                label: 'Heures Prévues',
-                data: props.monthlyEvolution.map(item => item.total_planned),
-                fill: false,
-                borderColor: '#94a3b8',
-                tension: 0.4
-            },
-            {
-                label: 'Heures Travaillées',
-                data: props.monthlyEvolution.map(item => item.total_worked),
-                fill: true,
-                borderColor: '#6366f1',
-                backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                tension: 0.4
-            }
-        ]
-    };
+    if (props.monthlyEvolution?.length) {
+        evolutionChartData.value = {
+            labels: props.monthlyEvolution.map(item => item.month),
+            datasets: [
+                {
+                    label: 'Heures Prévues',
+                    data: props.monthlyEvolution.map(item => item.total_planned),
+                    fill: false,
+                    borderColor: '#94a3b8',
+                    tension: 0.4
+                },
+                {
+                    label: 'Heures Travaillées',
+                    data: props.monthlyEvolution.map(item => item.total_worked),
+                    fill: true,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4
+                }
+            ]
+        };
+    }
 
     evolutionChartOptions.value = {
         maintainAspectRatio: false,
@@ -79,18 +80,19 @@ const initCharts = () => {
         }
     };
 
-    // Campaign Chart
-    campaignChartData.value = {
-        labels: props.campaignStats.map(c => c.name),
-        datasets: [
-            {
-                label: 'Agents Actifs',
-                data: props.campaignStats.map(c => c.assignments_count),
-                backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b'],
-                borderRadius: 8
-            }
-        ]
-    };
+    if (props.campaignStats?.length) {
+        campaignChartData.value = {
+            labels: props.campaignStats.map(c => c.name),
+            datasets: [
+                {
+                    label: 'Agents Actifs',
+                    data: props.campaignStats.map(c => c.assignments_count),
+                    backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b'],
+                    borderRadius: 8
+                }
+            ]
+        };
+    }
 
     campaignChartOptions.value = {
         maintainAspectRatio: false,
@@ -152,13 +154,13 @@ const exportPdf = () => {
                         </div>
                         <div class="flex items-center gap-1 text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">
                             <TrendingUp class="w-3 h-3" />
-                            +{{ Math.round((stats.activeEmployees / stats.employees) * 100) }}%
+                            +{{ Math.round((stats.activeEmployees / (stats.employees || 1)) * 100) }}%
                         </div>
                     </div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Effectif Actif</p>
                     <div class="flex items-baseline gap-2 mt-1">
-                        <h3 class="text-3xl font-black text-slate-800">{{ stats.activeEmployees }}</h3>
-                        <span class="text-slate-400 font-medium">/ {{ stats.employees }}</span>
+                        <h3 class="text-3xl font-black text-slate-800">{{ stats.activeEmployees || 0 }}</h3>
+                        <span class="text-slate-400 font-medium">/ {{ stats.employees || 0 }}</span>
                     </div>
                 </div>
 
@@ -170,7 +172,7 @@ const exportPdf = () => {
                         <span class="text-xs font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-full">Actives</span>
                     </div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Campagnes</p>
-                    <h3 class="text-3xl font-black text-slate-800 mt-1">{{ stats.campaigns }}</h3>
+                    <h3 class="text-3xl font-black text-slate-800 mt-1">{{ stats.campaigns || 0 }}</h3>
                 </div>
 
                 <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
@@ -178,10 +180,10 @@ const exportPdf = () => {
                         <div class="p-3 bg-amber-50 text-amber-600 rounded-2xl">
                             <ClipboardCheck class="w-6 h-6" />
                         </div>
-                        <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">{{ stats.pendingTimesheets }} en attente</span>
+                        <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">{{ stats.pendingTimesheets || 0 }} en attente</span>
                     </div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Affectations</p>
-                    <h3 class="text-3xl font-black text-slate-800 mt-1">{{ stats.assignments }}</h3>
+                    <h3 class="text-3xl font-black text-slate-800 mt-1">{{ stats.assignments || 0 }}</h3>
                 </div>
 
                 <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
@@ -194,7 +196,7 @@ const exportPdf = () => {
                         </div>
                     </div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Heures Total</p>
-                    <h3 class="text-3xl font-black text-slate-800 mt-1">{{ Math.round(stats.workedHours) }}<span class="text-lg ml-1 text-slate-400">h</span></h3>
+                    <h3 class="text-3xl font-black text-slate-800 mt-1">{{ Math.round(stats.workedHours || 0) }}<span class="text-lg ml-1 text-slate-400">h</span></h3>
                 </div>
             </div>
 
@@ -227,21 +229,21 @@ const exportPdf = () => {
                             <p class="text-xs text-slate-400 uppercase font-black mb-1">Taux de réalisation</p>
                             <div class="flex items-baseline gap-2">
                                 <p class="text-2xl font-black text-slate-800">
-                                    {{ Math.round((stats.workedHours / planningGaps.planned) * 100) || 0 }}%
+                                    {{ Math.round(((stats.workedHours || 0) / (planningGaps.planned || 1)) * 100) }}%
                                 </p>
                                 <span class="text-xs font-bold text-slate-400">Objectif: 95%</span>
                             </div>
                         </div>
                         <div class="p-5 bg-slate-50 rounded-[1.5rem]">
                             <p class="text-xs text-slate-400 uppercase font-black mb-1">Écart Volume</p>
-                            <p class="text-2xl font-black" :class="planningGaps.gap >= 0 ? 'text-emerald-600' : 'text-rose-600'">
-                                {{ planningGaps.gap > 0 ? '+' : '' }}{{ Math.round(planningGaps.gap) }}h
+                            <p class="text-2xl font-black" :class="(planningGaps.gap || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'">
+                                {{ (planningGaps.gap || 0) > 0 ? '+' : '' }}{{ Math.round(planningGaps.gap || 0) }}h
                             </p>
                         </div>
                         <div class="p-5 bg-indigo-600 rounded-[1.5rem] text-white shadow-lg shadow-indigo-200">
                             <p class="text-xs text-indigo-200 uppercase font-black mb-1">Status Global</p>
                             <p class="text-lg font-bold">
-                                {{ planningGaps.gap >= 0 ? 'Optimisé' : 'Sous-effectif' }}
+                                {{ (planningGaps.gap || 0) >= 0 ? 'Optimisé' : 'Sous-effectif' }}
                             </p>
                         </div>
                     </div>
@@ -306,16 +308,16 @@ const exportPdf = () => {
                                 </div>
                             </div>
                             <div class="text-right">
-                                <p class="text-sm font-black text-slate-800">{{ Math.round(emp.user_timesheets_entries_sum_total_hours || 0) }}h</p>
+                                <p class="text-sm font-black text-slate-800">{{ Math.round(emp.timesheet_entries_sum_total_hours || 0) }}h</p>
                                 <div class="flex items-center gap-1">
                                     <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                         <div 
                                             class="h-full bg-emerald-500 rounded-full" 
-                                            :style="{ width: Math.min(((emp.user_timesheets_entries_sum_total_hours || 0) / (emp.user_timesheets_entries_sum_planned_hours || 1)) * 100, 100) + '%' }"
+                                            :style="{ width: Math.min(((emp.timesheet_entries_sum_total_hours || 0) / (emp.timesheet_entries_sum_planned_hours || 1)) * 100, 100) + '%' }"
                                         ></div>
                                     </div>
                                     <span class="text-[10px] font-bold text-slate-400">
-                                        {{ Math.round(((emp.user_timesheets_entries_sum_total_hours || 0) / (emp.user_timesheets_entries_sum_planned_hours || 1)) * 100) }}%
+                                        {{ Math.round(((emp.timesheet_entries_sum_total_hours || 0) / (emp.timesheet_entries_sum_planned_hours || 1)) * 100) }}%
                                     </span>
                                 </div>
                             </div>
@@ -337,7 +339,7 @@ const exportPdf = () => {
                                 <div>
                                     <p class="font-bold text-white">Alertes Planning</p>
                                     <p class="text-xs text-indigo-200 mt-1">
-                                        {{ stats.pendingTimesheets }} feuilles de temps en attente de validation. Impact possible sur la facturation.
+                                        {{ stats.pendingTimesheets || 0 }} feuilles de temps en attente de validation. Impact possible sur la facturation.
                                     </p>
                                 </div>
                             </div>
@@ -349,7 +351,7 @@ const exportPdf = () => {
                                 <div>
                                     <p class="font-bold text-white">Tendance Hebdomadaire</p>
                                     <p class="text-xs text-indigo-200 mt-1">
-                                        La productivité est en hausse de 8% par rapport à la semaine dernière. Les campagnes de prospection sont les plus performantes.
+                                        La productivité est en hausse par rapport à la période précédente.
                                     </p>
                                 </div>
                             </div>

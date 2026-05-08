@@ -5,8 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-// use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Employee extends Model
 {
@@ -34,6 +34,42 @@ class Employee extends Model
         'salary_base' => 'decimal:2',
     ];
 
+    /**
+     * Boot the model.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($employee) {
+            if (empty($employee->matricule)) {
+                $employee->matricule = self::generateMatricule();
+            }
+        });
+    }
+
+    /**
+     * Génère un matricule unique (ex: EMP-2026-0001)
+     */
+    public static function generateMatricule(): string
+    {
+        $year = date('Y');
+        $prefix = 'EMP-' . $year . '-';
+        
+        $lastEmployee = self::where('matricule', 'like', $prefix . '%')
+            ->orderBy('matricule', 'desc')
+            ->first();
+
+        if ($lastEmployee) {
+            $lastNumber = intval(substr($lastEmployee->matricule, -4));
+            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            $newNumber = '0001';
+        }
+
+        return $prefix . $newNumber;
+    }
+
     // Statuts disponibles
     const STATUS_ACTIF     = 'actif';
     const STATUS_INACTIF   = 'inactif';
@@ -44,6 +80,16 @@ class Employee extends Model
         self::STATUS_INACTIF,
         self::STATUS_SUSPENDU,
     ];
+
+    public function timesheets(): HasMany
+    {
+        return $this->hasMany(Timesheet::class);
+    }
+
+    public function timesheetEntries(): HasManyThrough
+    {
+        return $this->hasManyThrough(TimesheetEntry::class, Timesheet::class);
+    }
 
     public function position(): BelongsTo
     {
@@ -107,7 +153,7 @@ class Employee extends Model
         return "{$this->first_name} {$this->last_name}";
     }
 
-    // public function logs()
+    
     public function planningAssignments(): HasMany
     {
         return $this->hasMany(PlanningAssignment::class);

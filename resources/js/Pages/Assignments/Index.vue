@@ -132,19 +132,27 @@ const getPositionSeverity = (code) => {
 
 <template>
     <AppLayout>
-        <div class="p-4">
-            <div class="card bg-white border-round shadow-1">
-                <!-- Barre d'outils avec bouton d'ajout -->
-                <div class="flex justify-between items-center p-4 border-b">
-                    <h2 class="text-xl font-bold m-0">Gestion des Affectations</h2>
-                    <Button label="Nouvelle Affectation" icon="pi pi-plus" class="p-button-primary" @click="openNew" />
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 tracking-tight">Gestion des Affectations</h2>
+                    <p class="text-slate-500 font-medium">Gérez l'organisation hiérarchique de vos équipes par campagne.</p>
                 </div>
+                <Button label="Nouvelle Affectation" icon="pi pi-plus" class="!bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-0 !rounded-xl !shadow-lg !shadow-blue-500/20" @click="openNew" />
+            </div>
 
+            <div class="card !border-0 !shadow-sm !rounded-2xl overflow-hidden bg-white/50 backdrop-blur-sm">
                 <!-- Tableau des affectations actives -->
-                <DataTable :value="props.assignments" paginator :rows="10" class="p-datatable-sm">
+                <DataTable :value="props.assignments" paginator :rows="10" class="p-datatable-sm"
+                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                    currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords}">
                     <template #header>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Liste des ressources affectées aux campagnes</span>
+                        <div class="flex justify-between items-center py-2">
+                            <span class="text-slate-600 font-bold">Ressources affectées</span>
+                            <span class="p-input-icon-left">
+                                <i class="pi pi-search" />
+                                <InputText placeholder="Rechercher..." class="!rounded-xl !bg-slate-50/50" />
+                            </span>
                         </div>
                     </template>
 

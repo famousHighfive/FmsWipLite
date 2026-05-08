@@ -42,12 +42,13 @@ class LogHistorySeeder extends Seeder
         ]);
 
         // Historique d'affectation
+        $campaigns = \App\Models\Campaign::limit(2)->get();
         AssignmentHistory::create([
             'assignment_id' => $assignment->id,
             'employee_id' => $assignment->employee_id,
             'action_type' => 'transfer',
-            'old_campaign_id' => 1,
-            'new_campaign_id' => 2,
+            'old_campaign_id' => $campaigns[0]->id ?? null,
+            'new_campaign_id' => $campaigns[1]->id ?? null,
             'changed_by' => $user->id,
             'reason' => 'Besoin de renfort sur la campagne Orange'
         ]);
