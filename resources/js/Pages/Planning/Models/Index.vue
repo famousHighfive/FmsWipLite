@@ -21,17 +21,6 @@ import {
     History,
 } from "lucide-vue-next";
 
-const tabs = [
-    { name: "Modèles", href: route('planning.models.index'), icon: Clock },
-    { name: "Affectations", href: route('planning.assignments.index'), icon: Users },
-    { name: "Validation", href: route('planning.assignments.validation'), icon: CheckCircle },
-    { name: "Historique", href: route('planning.assignments.history'), icon: History },
-];
-
-const currentTab = computed(() => {
-    return tabs.find(tab => tab.href === window.location.pathname)?.name || "Modèles";
-});
-
 const props = defineProps({
     planningModels: Array,
     activeAssignments: Array,
@@ -122,59 +111,38 @@ const weekDays = [
     <Head title="Modèles de Planning" />
 
     <AppLayout>
-        <template #header>
-            <div class="mb-6">
-                <div class="flex justify-between items-center gap-8 mb-4">
-                    <div class="min-w-0">
-                        <h2 class="text-xl font-black text-slate-800 truncate">
-                            Paramétrage Plannings
-                        </h2>
-                        <p
-                            class="text-blue-500/70 text-[10px] font-bold uppercase tracking-widest mt-1"
-                        >
-                            Gérez vos structures horaires
-                        </p>
-                    </div>
-
-                    <Button
-                        @click="openCreateModal"
-                        class="flex-shrink-0 !bg-blue-600 !border-none !rounded-xl !px-6 !py-3 flex items-center gap-2 shadow-lg shadow-blue-100 hover:!bg-blue-700 transition-all"
-                    >
-                        <Plus class="w-4 h-4 text-white" />
-                        <span class="font-bold text-white text-sm whitespace-nowrap"
-                            >Nouveau modèle</span
-                        >
-                    </Button>
+        <div class="space-y-6">
+            <!-- HEADER -->
+            <div class="flex items-center justify-between">
+                <div class="min-w-0">
+                    <h2 class="text-2xl font-black text-slate-800 tracking-tight">
+                        Modèles de Planning
+                    </h2>
+                    <p class="text-slate-500 font-medium mt-1">
+                        Gérez vos structures horaires hebdomadaires types.
+                    </p>
                 </div>
 
-                <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl">
-                    <button
-                        v-for="tab in tabs"
-                        :key="tab.name"
-                        @click="router.visit(tab.href)"
-                        class="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
-                        :class="
-                            currentTab === tab.name
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-                        "
+                <Button
+                    @click="openCreateModal"
+                    class="!bg-blue-600 !border-none !rounded-xl !px-6 !py-3 flex items-center gap-2 shadow-lg shadow-blue-100 hover:!bg-blue-700 transition-all"
+                >
+                    <Plus class="w-4 h-4 text-white" />
+                    <span class="font-bold text-white text-sm whitespace-nowrap"
+                        >Nouveau modèle</span
                     >
-                        <tab.icon class="w-4 h-4" />
-                        <span>{{ tab.name }}</span>
-                    </button>
-                </div>
+                </Button>
             </div>
-        </template>
 
-        <div class="grid grid-cols-12 gap-6 py-6">
-            <section class="col-span-12 lg:col-span-5 space-y-4">
+            <!-- GRID DES MODÈLES (Ancien style, pleine largeur) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div
                     v-for="model in planningModels"
                     :key="model.id"
                     class="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:border-blue-200 transition-all group"
                 >
                     <div class="flex justify-between items-start mb-4">
-                        <h4 class="font-bold text-slate-800 tracking-tight">
+                        <h4 class="font-bold text-slate-800 tracking-tight uppercase">
                             {{ model.name }}
                         </h4>
                         <Badge
@@ -208,7 +176,7 @@ const weekDays = [
                             <span
                                 class="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase"
                             >
-                                <User class="w-3 h-3 text-blue-400" />
+                                <Users class="w-3 h-3 text-blue-400" />
                                 {{ model.assignments_count }} Assignés
                             </span>
                             <span
@@ -229,52 +197,10 @@ const weekDays = [
                         </Button>
                     </div>
                 </div>
-            </section>
-
-            <!-- <section
-                class="col-span-12 lg:col-span-7 bg-white border border-slate-100 rounded-[2rem] p-6 h-fit shadow-sm"
-            >
-                <h3
-                    class="text-xs font-black text-slate-400 mb-5 flex items-center gap-2 uppercase tracking-widest"
-                >
-                    <div class="w-1 h-4 bg-blue-500 rounded-full"></div>
-                    Affectations actives
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div
-                        v-for="assign in activeAssignments"
-                        :key="assign.id"
-                        class="p-4 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center gap-4 group hover:bg-white hover:shadow-md transition-all"
-                    >
-                        <div
-                            class="bg-white p-3 rounded-lg shadow-sm group-hover:bg-blue-50 transition-colors"
-                        >
-                            <Calendar class="w-4 h-4 text-blue-500" />
-                        </div>
-                        <div class="overflow-hidden">
-                            <h4
-                                class="font-bold text-slate-800 text-xs truncate uppercase"
-                            >
-                                {{ assign.user_name }}
-                            </h4>
-                            <p
-                                class="text-[10px] font-bold text-blue-500 truncate"
-                            >
-                                {{ assign.model_name }}
-                            </p>
-                            <div
-                                class="flex items-center gap-2 mt-1 text-[9px] font-black text-slate-400 bg-white w-fit px-2 py-0.5 rounded border border-slate-100"
-                            >
-                                <span>{{ assign.start_date }}</span>
-                                <ArrowRight class="w-2 h-2 text-blue-300" />
-                                <span>{{ assign.end_date }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section> -->
+            </div>
         </div>
 
+        <!-- MODAL DE CRÉATION/ÉDITION -->
         <Dialog
             v-model:visible="showModal"
             modal
@@ -371,8 +297,7 @@ const weekDays = [
                         </div>
                         <span
                             class="text-[11px] font-black uppercase tracking-[0.25em] text-blue-100"
-                            >Total Hebdomadaire</span
-                        >
+                            >Total Hebdomadaire</span>
                     </div>
                     <div
                         class="text-5xl font-black tabular-nums tracking-tighter"

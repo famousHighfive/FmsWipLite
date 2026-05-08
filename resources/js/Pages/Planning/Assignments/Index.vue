@@ -1,20 +1,49 @@
 <script setup>
 import { ref } from "vue";
-import { Head, Link, router } from "@inertiajs/vue3";
+import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import Button from "primevue/button";
 import Tag from "primevue/tag";
 import Dialog from "primevue/dialog";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
-import { UserPlus, Clock, Eye, Calendar, CheckCircle, AlertCircle, PauseCircle, XCircle } from "lucide-vue-next";
+import Select from "primevue/select";
+import DatePicker from "primevue/datepicker";
+import { UserPlus, Clock, Eye, Calendar, CheckCircle, AlertCircle, PauseCircle, XCircle, Megaphone } from "lucide-vue-next";
 
 const props = defineProps({
     supervisorAssignments: Array,
+    campaigns: Array,
+    chefsDePlateau: Array,
+    supPositionId: Number,
 });
 
 const selectedSupervisor = ref(null);
 const showTeleconseillersModal = ref(false);
+const showCampaignModal = ref(false);
+
+const campaignForm = useForm({
+    employee_id: null,
+    campaign_id: null,
+    manager_id: null,
+    position_id: props.supPositionId,
+    start_date: new Date(),
+});
+
+const openCampaignModal = (supervisor) => {
+    campaignForm.employee_id = supervisor.id;
+    selectedSupervisor.value = supervisor;
+    showCampaignModal.value = true;
+};
+
+const submitCampaignAssignment = () => {
+    campaignForm.post(route('assignments.store'), {
+        onSuccess: () => {
+            showCampaignModal.value = false;
+            campaignForm.reset();
+        }
+    });
+};
 
 const getStatusLabel = (status) => {
     switch (status) {
@@ -74,6 +103,10 @@ const terminateAssignment = (id) => {
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
                                 <h3 class="font-bold text-slate-800">{{ item.supervisor.name }}</h3>
+                                <div v-if="item.supervisor.has_campaign" class="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                                    <Megaphone class="w-3 h-3" />
+                                    <span class="text-[10px] font-black">{{ item.supervisor.campaign_name }}</span>
+                                </div>
                                 <div v-if="item.assignments.length > 0" class="flex items-center gap-1.5 bg-green-50 text-green-600 px-2 py-0.5 rounded-full">
                                     <CheckCircle class="w-3 h-3" />
                                     <span class="text-[10px] font-black">Planning assigné</span>
@@ -86,10 +119,16 @@ const terminateAssignment = (id) => {
                             <p class="text-xs text-slate-400 uppercase font-black">Superviseur</p>
                         </div>
                     </div>
-                    <Button @click="viewTeleconseillers(item)" class="!bg-slate-100 !text-slate-700 !border-none">
-                        <Eye class="w-4 h-4 mr-2" />
-                        Voir l'équipe
-                    </Button>
+                    <div class="flex items-center gap-3">
+                        <Button v-if="!item.supervisor.has_campaign" @click="openCampaignModal(item.supervisor)" class="!bg-indigo-600 !text-white !border-none !rounded-xl !px-4">
+                            <Megaphone class="w-4 h-4 mr-2" />
+                            Affecter Campagne
+                        </Button>
+                        <Button @click="viewTeleconseillers(item)" class="!bg-slate-100 !text-slate-700 !border-none !rounded-xl !px-4">
+                            <Eye class="w-4 h-4 mr-2" />
+                            Voir l'équipe
+                        </Button>
+                    </div>
                 </div>
 
                 <div v-if="item.assignments.length > 0" class="space-y-3">
@@ -193,6 +232,41 @@ const terminateAssignment = (id) => {
                     Aucun téléconseiller dans cette équipe
                 </div>
             </div>
+        </Dialog>
+
+        <!-- MODAL D'AFFECTATION CAMPAGNE -->
+        <Dialog v-model:visible="showCampaignModal" header="Affecter à une campagne" :style="{ width: '30rem' }" modal>
+            <form @submit.prevent="submitCampaignAssignment" class="space-y-6 pt-4">
+                <div v-if="selectedSupervisor" class="bg-blue-50 p-4 rounded-xl flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
+                        {{ selectedSupervisor.name.substring(0, 2).toUpperCase() }}
+                    </div>
+                    <div>
+                        <p class="text-xs font-black text-blue-600 uppercase tracking-widest">Superviseur</p>
+                        <p class="font-bold text-slate-800">{{ selectedSupervisor.name }}</p>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Campagne</label>
+                    <Select v-model="campaignForm.campaign_id" :options="campaigns" optionLabel="name" optionValue="id" placeholder="Choisir une campagne" class="w-full !rounded-xl !bg-slate-50 !border-slate-100" />
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Chef de Plateau (Responsable)</label>
+                    <Select v-model="campaignForm.manager_id" :options="chefsDePlateau" optionLabel="user.name" optionValue="id" placeholder="Choisir un CP" class="w-full !rounded-xl !bg-slate-50 !border-slate-100" />
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date de début</label>
+                    <DatePicker v-model="campaignForm.start_date" class="w-full" inputClass="!rounded-xl !bg-slate-50 !border-slate-100" />
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <Button label="Annuler" text @click="showCampaignModal = false" class="flex-1 !py-3 !rounded-xl" />
+                    <Button type="submit" label="Confirmer l'affectation" :loading="campaignForm.processing" class="flex-1 !bg-blue-600 !border-none !py-3 !rounded-xl !font-bold" />
+                </div>
+            </form>
         </Dialog>
     </AppLayout>
 </template>

@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 
+use App\Models\Campaign;
+use App\Models\Position;
+
 class PlanningAssignmentController extends Controller
 {
     public function index()
@@ -27,8 +30,22 @@ class PlanningAssignmentController extends Controller
             })
             ->get();
 
+        // Récupérer les chefs de plateau pour l'affectation des superviseurs
+        $chefsDePlateau = Employee::whereHas('user.role', function($q) {
+            $q->where('name', 'cp');
+        })->get();
+
+        // Récupérer le position_id pour SUP
+        $supPosition = Position::where('code', 'SUP')->first();
+
         $supervisorAssignments = $supervisors->map(function ($supervisor) use ($allAssignments) {
             $supervisorAssignments = $allAssignments->where('employee_id', $supervisor->id);
+
+            // Vérifier si le superviseur a une affectation de campagne active
+            $campaignAssignment = Assignment::with('campaign')
+                ->where('employee_id', $supervisor->id)
+                ->where('status', 'actif')
+                ->first();
 
             $teleconseillerIds = Assignment::where('manager_id', $supervisor->id)
                 ->where('status', 'actif')
@@ -40,6 +57,8 @@ class PlanningAssignmentController extends Controller
                 'supervisor' => [
                     'id' => $supervisor->id,
                     'name' => $supervisor->user->name,
+                    'has_campaign' => $campaignAssignment !== null,
+                    'campaign_name' => $campaignAssignment?->campaign?->name,
                 ],
                 'assignments' => $supervisorAssignments->map(fn($a) => [
                     'id' => $a->id,
@@ -63,7 +82,10 @@ class PlanningAssignmentController extends Controller
         });
 
         return Inertia::render('Planning/Assignments/Index', [
-            'supervisorAssignments' => $supervisorAssignments
+            'supervisorAssignments' => $supervisorAssignments,
+            'campaigns' => Campaign::where('status', 'active')->get(),
+            'chefsDePlateau' => $chefsDePlateau,
+            'supPositionId' => $supPosition?->id
         ]);
     }
 
