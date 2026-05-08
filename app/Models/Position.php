@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Position extends Model
 {
-    
+
       /**
      * @use HasFactory<\Database\Factories\ArticleFactory>
      */
@@ -20,5 +20,9 @@ class Position extends Model
     {
         return $this->hasMany(Employee::class);
     }
+    public function logs()
+{
+    return $this->morphMany(ActivityLog::class, 'model');
+}
 }
 

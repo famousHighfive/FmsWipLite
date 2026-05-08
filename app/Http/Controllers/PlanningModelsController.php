@@ -16,21 +16,21 @@ class PlanningModelsController extends Controller
     public function index()
     {
         return Inertia::render('Planning/Models/Index', [
-            'planningModels' => PlanningModel::withCount('planningAssignments')
+            'planningModels' => PlanningModel::with('creator:id,name')
+                ->withCount('assignments')
                 ->latest()
                 ->get(),
 
-            // Récupération des affectations réelles avec les relations
             'activeAssignments' => PlanningAssignment::with(['employee.user', 'planningModel'])
-                ->where('status', 'active') // Optionnel : filtrer par statut
+                ->where('status', 'validé')
                 ->latest()
                 ->get()
                 ->map(fn($assign) => [
                     'id' => $assign->id,
-                    'user_name' => $assign->employee->user->name, // On suppose que Employee a une relation user
+                    'user_name' => $assign->employee->user->name,
                     'model_name' => $assign->planningModel->name,
-                    'start_date' => $assign->start_date->format('Y-m-d'), // Assure-toi qu'ils sont castés en date
-                    'end_date' => $assign->end_date ? $assign->end_date->format('Y-m-d') : 'Indéfinie',
+                    'start_date' => $assign->start_date->format('Y-m-d'),
+                    'end_date' => $assign->end_date->format('Y-m-d'),
                 ]),
         ]);
     }
@@ -88,7 +88,7 @@ class PlanningModelsController extends Controller
      */
     public function destroy(PlanningModel $model)
     {
-        if ($model->planningAssignments()->exists()) {
+        if ($model->assignments()->exists()) {
             return redirect()->back()->with('error', 'Ce modèle est utilisé par des employés.');
         }
 

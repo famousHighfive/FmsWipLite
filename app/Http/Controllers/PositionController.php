@@ -4,17 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\Position;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class PositionController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Liste des postes
      */
     public function index()
     {
-        //
-    }
+        $positions = Position::withCount('employees')->get();
 
+        return Inertia::render('Positions/Index', [
+            'positions' => $positions,
+        ]);
+    }
     /**
      * Show the form for creating a new resource.
      */
@@ -32,13 +36,17 @@ class PositionController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Fiche détaillée d'un poste avec ses employés
      */
     public function show(Position $position)
     {
-        //
-    }
+        $position->load('employees');
 
+        return Inertia::render('Positions/Show', [
+            'position' => $position,
+        ]);
+    }
+    
     /**
      * Show the form for editing the specified resource.
      */

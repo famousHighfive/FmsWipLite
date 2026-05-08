@@ -16,7 +16,7 @@ class AssignmentHistory extends Model
     ];
 
     public function assignment() { return $this->belongsTo(Assignment::class); }
-    
+
     public function employee() { return $this->belongsTo(Employee::class); }
 
     public function oldManager() { return $this->belongsTo(User::class, 'old_manager_id'); }
@@ -28,4 +28,8 @@ class AssignmentHistory extends Model
     public function newCampaign() { return $this->belongsTo(Campaign::class, 'new_campaign_id'); }
 
     public function author() { return $this->belongsTo(User::class, 'changed_by'); }
+    public function logs()
+    {
+        return $this->morphMany(ActivityLog::class, 'model');
+    }
 }

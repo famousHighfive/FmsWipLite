@@ -1,0 +1,10 @@
+Avec Route::resource('campaigns', ...), Laravel génère automatiquement des noms basés sur le pluriel de la ressource.
+Voici les noms générés par défaut :
+campaigns.index (Liste)
+campaigns.create (Formulaire de création)
+campaigns.store (Enregistrement)
+campaigns.show (Affichage d'un élément)
+campaigns.edit (Formulaire d'édition)
+campaigns.update (Modification)
+campaigns.destroy (Suppression)
+📍 Note : C'est pour cela que votre route spécifique ->name('campaigns.status') est bien nommée, car elle suit la convention "pluriel.action".

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\EmployeeHistory;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class EmployeeHistoryController extends Controller
 {
@@ -12,7 +13,7 @@ class EmployeeHistoryController extends Controller
      */
     public function index()
     {
-        //
+        
     }
 
     /**

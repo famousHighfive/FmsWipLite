@@ -40,4 +40,8 @@ class Timesheet extends Model
     {
         return $this->hasMany(TimesheetEntry::class);
     }
+    public function logs()
+{
+    return $this->morphMany(ActivityLog::class, 'model');
+}
 }

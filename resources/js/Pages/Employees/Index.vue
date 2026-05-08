@@ -1,133 +1,618 @@
-<template>
-  <div class="min-h-screen bg-slate-50 flex">
-    <!-- Sidebar (Identique au Dashboard pour la cohérence) -->
-    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col">
-      <div class="p-6">
-        <h1 class="text-2xl font-bold text-indigo-600 tracking-tight">WIPIL</h1>
-        <p class="text-xs text-slate-400 uppercase font-semibold mt-1">Administrateur</p>
-      </div>
-
-      <nav class="flex-1 px-4 space-y-2">
-        <a href="/dashboard/admin" class="flex items-center space-x-3 text-slate-600 hover:bg-slate-100 p-3 rounded-xl transition-all">
-          <LayoutDashboardIcon class="w-5 h-5" />
-          <span class="font-medium">Tableau de bord</span>
-        </a>
-        <a href="#" class="flex items-center space-x-3 bg-indigo-600 text-white p-3 rounded-xl shadow-lg shadow-indigo-100">
-          <UsersIcon class="w-5 h-5" />
-          <span class="font-medium">Utilisateurs</span>
-        </a>
-        <!-- ... autres liens ... -->
-      </nav>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="flex-1 p-8 overflow-y-auto">
-      <!-- Header -->
-      <header class="flex justify-between items-center mb-8">
-        <div>
-          <h2 class="text-3xl font-bold text-slate-800">Gestion des Utilisateurs</h2>
-          <p class="text-slate-500 mt-1">{{ users.length }} utilisateurs au total</p>
-        </div>
-        <button class="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg shadow-indigo-100 transition-all">
-          <UserPlusIcon class="w-5 h-5" />
-          <span>Nouvel Utilisateur</span>
-        </button>
-      </header>
-
-      <!-- Table Section -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-white">
-          <h3 class="font-bold text-slate-700">Liste des Utilisateurs</h3>
-
-          <!-- Search Bar -->
-          <div class="relative w-80">
-            <SearchIcon class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Rechercher par nom ou matricule..."
-              class="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
-            />
-          </div>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-left">
-            <thead class="bg-slate-50/50">
-              <tr>
-                <th class="px-6 py-4 text-xs uppercase font-bold text-slate-500 tracking-wider">Matricule</th>
-                <th class="px-6 py-4 text-xs uppercase font-bold text-slate-500 tracking-wider">Nom</th>
-                <th class="px-6 py-4 text-xs uppercase font-bold text-slate-500 tracking-wider">Rôle</th>
-                <th class="px-6 py-4 text-xs uppercase font-bold text-slate-500 tracking-wider">Statut</th>
-                <th class="px-6 py-4 text-xs uppercase font-bold text-slate-500 tracking-wider">Campagne</th>
-                <th class="px-6 py-4 text-xs uppercase font-bold text-slate-500 tracking-wider">Créé le</th>
-                <th class="px-6 py-4 text-xs uppercase font-bold text-slate-500 tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              <tr v-for="user in users" :key="user.matricule" class="hover:bg-slate-50/80 transition-colors group">
-                <td class="px-6 py-4">
-                  <span class="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded text-sm">
-                    {{ user.matricule }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 font-semibold text-slate-700">{{ user.nom }}</td>
-                <td class="px-6 py-4">
-                  <span :class="['px-3 py-1 rounded-full text-xs font-bold', getRoleClass(user.role)]">
-                    {{ user.role }}
-                  </span>
-                </td>
-                <td class="px-6 py-4">
-                  <span :class="['px-2.5 py-0.5 rounded text-xs font-bold ring-1 ring-inset', user.statut === 'Actif' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 'bg-rose-50 text-rose-700 ring-rose-600/20']">
-                    {{ user.statut }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 text-sm text-slate-500">{{ user.campagne }}</td>
-                <td class="px-6 py-4 text-sm text-slate-500">{{ user.cree_le }}</td>
-                <td class="px-6 py-4">
-                  <div class="flex items-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button class="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-indigo-600 transition-all">
-                      <Edit3Icon class="w-4 h-4" />
-                    </button>
-                    <button class="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-rose-600 transition-all">
-                      <Trash2Icon class="w-4 h-4" />
-                    </button>
-                    <button class="p-1.5 hover:bg-white hover:shadow-sm rounded-lg text-slate-400 hover:text-slate-600 transition-all">
-                      <MoreVerticalIcon class="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </main>
-  </div>
-</template>
-
 <script setup>
-import {
-  LayoutDashboardIcon, UsersIcon, UserPlusIcon,
-  SearchIcon, Edit3Icon, Trash2Icon, MoreVerticalIcon
-} from 'lucide-vue-next';
+import AppLayout from "@/Layouts/AppLayout.vue";
+import { ref, watch } from "vue";
+import { router, useForm } from "@inertiajs/vue3";
+import { useToast } from "primevue/usetoast";
+import { useConfirm } from "primevue/useconfirm";
 
-// Données en dur conformes à l'image
-const users = [
-  { matricule: 'ADM-001', nom: 'Jean Dupont', role: 'Admin', statut: 'Actif', campagne: '-', cree_le: '2024-01-15' },
-  { matricule: 'CP-003', nom: 'Marie Martin', role: 'Chef de Plateau', statut: 'Actif', campagne: 'Assurance Auto', cree_le: '2024-02-10' },
-  { matricule: 'SUP-012', nom: 'Pierre Dubois', role: 'Superviseur', statut: 'Actif', campagne: 'Crédit Conso', cree_le: '2024-03-05' },
-  { matricule: 'TC-045', nom: 'Alice Durand', role: 'Téléconseiller', statut: 'Actif', campagne: 'Assurance Auto', cree_le: '2024-04-12' },
-  { matricule: 'TC-087', nom: 'Bob Mercier', role: 'Téléconseiller', statut: 'Inactif', campagne: 'Mutuelle Santé', cree_le: '2024-01-20' },
-  { matricule: 'SUP-018', nom: 'Sophie Laurent', role: 'Superviseur', statut: 'Actif', campagne: 'Assurance Auto', cree_le: '2024-02-28' },
+import DataTable from "primevue/datatable";
+import Column from "primevue/column";
+import Button from "primevue/button";
+import Toolbar from "primevue/toolbar";
+import IconField from "primevue/iconfield";
+import InputIcon from "primevue/inputicon";
+import InputText from "primevue/inputtext";
+import Tag from "primevue/tag";
+import Dialog from "primevue/dialog";
+import Select from "primevue/select";
+import DatePicker from "primevue/datepicker";
+import InputNumber from "primevue/inputnumber";
+import Message from "primevue/message";
+import Toast from "primevue/toast";
+import ConfirmDialog from "primevue/confirmdialog";
+
+// ---------------------------------------------------------
+// PROPS
+// ---------------------------------------------------------
+const props = defineProps({
+    employees: Object,
+    positions: Array,
+    filters: Object,
+});
+
+// ---------------------------------------------------------
+// INSTANCES
+// ---------------------------------------------------------
+const toast = useToast();
+const confirm = useConfirm();
+const dt = ref();
+
+// ---------------------------------------------------------
+// RECHERCHE — debounce automatique
+// ---------------------------------------------------------
+const search = ref(props.filters?.search ?? "");
+let debounceTimer = null;
+
+watch(search, (value) => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        router.get(
+            route("employees.index"),
+            {
+                search: value,
+                page: 1,
+            },
+            { preserveState: true, replace: true },
+        );
+    }, 400);
+});
+
+// ---------------------------------------------------------
+// DIALOG — état
+// ---------------------------------------------------------
+const dialogVisible = ref(false);
+const isEditing = ref(false);
+const submitted = ref(false);
+
+// ---------------------------------------------------------
+// FORMULAIRE
+// ---------------------------------------------------------
+const form = useForm({
+    id: null,
+    matricule: "", // lecture seule en mode édition
+    first_name: "",
+    last_name: "",
+    birth_date: null,
+    phone: "",
+    email: "",
+    address: "",
+    position_id: null,
+    salary_base: null,
+    status: "actif",
+    user_id: null, // optionnel — lien vers un compte utilisateur
+});
+
+const statuses = [
+    { label: "Actif", value: "actif" },
+    { label: "Inactif", value: "inactif" },
+    { label: "Suspendu", value: "suspendu" },
 ];
 
-const getRoleClass = (role) => {
-  switch (role) {
-    case 'Admin': return 'bg-slate-100 text-slate-700';
-    case 'Chef de Plateau': return 'bg-indigo-100 text-indigo-700';
-    case 'Superviseur': return 'bg-emerald-100 text-emerald-700';
-    case 'Téléconseiller': return 'bg-amber-100 text-amber-700';
-    default: return 'bg-slate-100 text-slate-700';
-  }
+// ---------------------------------------------------------
+// OUVRIR LE DIALOG — création
+// ---------------------------------------------------------
+const openCreate = () => {
+    isEditing.value = false;
+    submitted.value = false;
+    form.reset();
+    form.clearErrors();
+    dialogVisible.value = true;
+};
+
+// ---------------------------------------------------------
+// OUVRIR LE DIALOG — modification
+// ---------------------------------------------------------
+const openEdit = (employee) => {
+    isEditing.value = true;
+    submitted.value = false;
+    form.clearErrors();
+
+    form.id = employee.id;
+    form.matricule = employee.matricule; // affiché en lecture seule
+    form.first_name = employee.first_name;
+    form.last_name = employee.last_name;
+    form.birth_date = employee.birth_date
+        ? new Date(employee.birth_date)
+        : null;
+    form.phone = employee.phone ?? "";
+    form.email = employee.email;
+    form.address = employee.address ?? "";
+    form.position_id = employee.position_id;
+    form.salary_base = parseFloat(employee.salary_base);
+    form.status = employee.status;
+    form.user_id = employee.user_id;
+
+    dialogVisible.value = true;
+};
+
+// ---------------------------------------------------------
+// FERMER LE DIALOG
+// ---------------------------------------------------------
+const closeDialog = () => {
+    dialogVisible.value = false;
+    submitted.value = false;
+    form.reset();
+    form.clearErrors();
+};
+
+// ---------------------------------------------------------
+// SOUMETTRE LE FORMULAIRE
+// ---------------------------------------------------------
+const submitForm = () => {
+    submitted.value = true;
+
+    const data = {
+        ...form.data(),
+        birth_date: form.birth_date
+            ? new Date(form.birth_date).toISOString().split("T")[0]
+            : null,
+    };
+
+    if (isEditing.value) {
+        form.transform(() => data).put(route("employees.update", form.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.add({
+                    severity: "success",
+                    summary: "Mis à jour",
+                    detail: `${form.first_name} ${form.last_name} a été mis à jour.`,
+                    life: 3000,
+                });
+                closeDialog();
+            },
+        });
+    } else {
+        form.transform(() => data).post(route("employees.store"), {
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.add({
+                    severity: "success",
+                    summary: "Créé",
+                    detail: `L'employé a été créé avec succès.`,
+                    life: 3000,
+                });
+                closeDialog();
+            },
+        });
+    }
+};
+
+// ---------------------------------------------------------
+// STATUT — badge coloré
+// ---------------------------------------------------------
+const getStatusSeverity = (status) => {
+    switch (status) {
+        case "actif":
+            return "success";
+        case "suspendu":
+            return "warn";
+        case "inactif":
+            return "danger";
+        default:
+            return null;
+    }
+};
+
+// ---------------------------------------------------------
+// EXPORT CSV
+// ---------------------------------------------------------
+const exportCSV = () => dt.value.exportCSV();
+
+// ---------------------------------------------------------
+// PAGINATION CÔTÉ SERVEUR
+// ---------------------------------------------------------
+const onPageChange = (event) => {
+    router.get(
+        route("employees.index"),
+        {
+            page: event.page + 1,
+            search: search.value,
+            per_page: event.rows,
+        },
+        { preserveState: true },
+    );
+};
+
+// ---------------------------------------------------------
+// TRI CÔTÉ SERVEUR
+// ---------------------------------------------------------
+const onSort = (event) => {
+    router.get(
+        route("employees.index"),
+        {
+            search: search.value,
+            page: 1,
+            sort_field: event.sortField,
+            sort_order: event.sortOrder === 1 ? "asc" : "desc",
+        },
+        { preserveState: true, replace: true },
+    );
+};
+
+// ---------------------------------------------------------
+// SUPPRESSION
+// ---------------------------------------------------------
+const confirmDelete = (employee) => {
+    confirm.require({
+        message: `Voulez-vous désactiver ${employee.first_name} ${employee.last_name} ?`,
+        header: "Confirmation",
+        icon: "pi pi-exclamation-triangle",
+        rejectProps: {
+            label: "Annuler",
+            severity: "secondary",
+            variant: "text",
+        },
+        acceptProps: { label: "Désactiver", severity: "danger" },
+        accept: () => {
+            router.delete(route("employees.destroy", employee.id), {
+                preserveScroll: true,
+                onSuccess: () =>
+                    toast.add({
+                        severity: "success",
+                        summary: "Archivé",
+                        detail: `${employee.first_name} ${employee.last_name} a été archivé.`,
+                        life: 3000,
+                    }),
+            });
+        },
+    });
 };
 </script>
+
+<template>
+    <AppLayout>
+        <Toast />
+        <ConfirmDialog />
+
+        <div class="card">
+            <!-- TOOLBAR -->
+            <Toolbar class="mb-6">
+                <template #start>
+                    <Button
+                        label="Nouvel employé"
+                        icon="pi pi-plus"
+                        class="mr-2 !bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-0"
+                        @click="openCreate"
+                    />
+                </template>
+                <template #end>
+                    <Button
+                        label="Exporter"
+                        icon="pi pi-upload"
+                        severity="secondary"
+                        @click="exportCSV"
+                    />
+                </template>
+            </Toolbar>
+
+            <!-- DATATABLE -->
+            <DataTable
+                ref="dt"
+                :value="employees.data"
+                :lazy="true"
+                :paginator="true"
+                :rows="employees.per_page"
+                :totalRecords="employees.total"
+                :rowsPerPageOptions="[10, 25, 50]"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} employés"
+                @page="onPageChange"
+                @sort="onSort"
+            >
+                <template #header>
+                    <div
+                        class="flex flex-wrap gap-2 items-center justify-between"
+                    >
+                        <h4 class="m-0">Liste des employés</h4>
+                        <IconField>
+                            <InputIcon>
+                                <i class="pi pi-search" />
+                            </InputIcon>
+                            <InputText
+                                v-model="search"
+                                placeholder="Rechercher..."
+                                class="focus:!border-blue-700"
+                            />
+                        </IconField>
+                    </div>
+                </template>
+
+                <Column
+                    field="matricule"
+                    header="Matricule"
+                    sortable
+                    style="min-width: 10rem"
+                />
+                <Column header="Nom complet" sortable style="min-width: 14rem">
+                    <template #body="{ data }">
+                        {{ data.first_name }} {{ data.last_name }}
+                    </template>
+                </Column>
+                <Column header="Poste" style="min-width: 10rem">
+                    <template #body="{ data }">
+                        {{ data.position?.name ?? "—" }}
+                    </template>
+                </Column>
+                <Column
+                    field="email"
+                    header="Email"
+                    sortable
+                    style="min-width: 14rem"
+                />
+                <Column
+                    field="phone"
+                    header="Téléphone"
+                    style="min-width: 12rem"
+                />
+                <Column
+                    field="status"
+                    header="Statut"
+                    sortable
+                    style="min-width: 8rem"
+                >
+                    <template #body="{ data }">
+                        <Tag
+                            :value="data.status"
+                            :severity="getStatusSeverity(data.status)"
+                        />
+                    </template>
+                </Column>
+                <Column
+                    header="Actions"
+                    :exportable="false"
+                    style="min-width: 8rem"
+                >
+                    <template #body="{ data }">
+                        <Button
+                            icon="pi pi-eye"
+                            variant="outlined"
+                            rounded
+                            class="mr-2"
+                            @click="router.visit(route('employees.show', data.id))"
+                        />
+                        <Button
+                            icon="pi pi-pencil"
+                            variant="outlined"
+                            rounded
+                            class="mr-2"
+                            @click="openEdit(data)"
+                        />
+                        <Button
+                            v-if="data.status !== 'inactif'"
+                            icon="pi pi-trash"
+                            variant="outlined"
+                            rounded
+                            severity="danger"
+                            @click="confirmDelete(data)"
+                        />
+                    </template>
+                </Column>
+            </DataTable>
+        </div>
+
+        <!-- ================================================ -->
+        <!-- DIALOG — Formulaire Créer / Modifier             -->
+        <!-- ================================================ -->
+        <Dialog
+            v-model:visible="dialogVisible"
+            :header="isEditing ? 'Modifier l\'employé' : 'Nouvel employé'"
+            :style="{ width: '650px' }"
+            :modal="true"
+            :closable="true"
+            @hide="closeDialog"
+        >
+            <div class="flex flex-col gap-4 pt-2">
+                <!-- Erreur globale -->
+                <Message v-if="form.hasErrors" severity="error">
+                    Veuillez corriger les erreurs ci-dessous.
+                </Message>
+
+                <!-- Matricule — lecture seule en mode édition -->
+                <div v-if="isEditing" class="flex flex-col gap-1">
+                    <label class="font-semibold text-slate-500"
+                        >Matricule</label
+                    >
+                    <InputText
+                        :value="form.matricule"
+                        disabled
+                        class="bg-slate-100 cursor-not-allowed focus:!border-blue-700"
+                        fluid
+                    />
+                    <small class="text-slate-400"
+                        >Le matricule est généré automatiquement et ne peut pas
+                        être modifié.</small
+                    >
+                </div>
+
+                <!-- Prénom / Nom -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold"
+                            >Prénom <span class="text-red-500">*</span></label
+                        >
+                        <InputText
+                            v-model="form.first_name"
+                            :invalid="!!form.errors.first_name"
+                            placeholder="Prénom"
+                            fluid
+                        />
+                        <small
+                            v-if="form.errors.first_name"
+                            class="text-red-500"
+                            >{{ form.errors.first_name }}</small
+                        >
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold"
+                            >Nom <span class="text-red-500">*</span></label
+                        >
+                        <InputText
+                            v-model="form.last_name"
+                            :invalid="!!form.errors.last_name"
+                            placeholder="Nom"
+                            fluid
+                        />
+                        <small
+                            v-if="form.errors.last_name"
+                            class="text-red-500"
+                            >{{ form.errors.last_name }}</small
+                        >
+                    </div>
+                </div>
+
+                <!-- Email / Téléphone -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold"
+                            >Email <span class="text-red-500">*</span></label
+                        >
+                        <InputText
+                            v-model="form.email"
+                            :invalid="!!form.errors.email"
+                            placeholder="email@exemple.com"
+                            fluid
+                        />
+                        <small v-if="form.errors.email" class="text-red-500">{{
+                            form.errors.email
+                        }}</small>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold">Téléphone</label>
+                        <InputText
+                            v-model="form.phone"
+                            placeholder="+229 00 00 00 00"
+                            fluid
+                        />
+                    </div>
+                </div>
+
+                <!-- Date de naissance -->
+                <div class="flex flex-col gap-1">
+                    <label class="font-semibold"
+                        >Date de naissance
+                        <span class="text-red-500">*</span></label
+                    >
+                    <DatePicker
+                        v-model="form.birth_date"
+                        :invalid="!!form.errors.birth_date"
+                        dateFormat="dd/mm/yy"
+                        :maxDate="new Date()"
+                        showIcon
+                        fluid
+                    />
+                    <small v-if="form.errors.birth_date" class="text-red-500">{{
+                        form.errors.birth_date
+                    }}</small>
+                </div>
+
+                <!-- Adresse -->
+                <div class="flex flex-col gap-1">
+                    <label class="font-semibold">Adresse</label>
+                    <InputText
+                        v-model="form.address"
+                        placeholder="Adresse complète"
+                        fluid
+                        class="focus:!border-blue-700"
+                    />
+                </div>
+
+                <!-- Poste / Statut -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold"
+                            >Poste <span class="text-red-500">*</span></label
+                        >
+                        <Select
+                            v-model="form.position_id"
+                            :options="positions"
+                            optionLabel="name"
+                            optionValue="id"
+                            placeholder="Sélectionner un poste"
+                            :invalid="!!form.errors.position_id"
+                            fluid
+                        />
+                        <small
+                            v-if="form.errors.position_id"
+                            class="text-red-500"
+                            >{{ form.errors.position_id }}</small
+                        >
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="font-semibold"
+                            >Statut <span class="text-red-500">*</span></label
+                        >
+                        <Select
+                            v-model="form.status"
+                            :options="statuses"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Sélectionner un statut"
+                            :invalid="!!form.errors.status"
+                            fluid
+                        />
+                        <small v-if="form.errors.status" class="text-red-500">{{
+                            form.errors.status
+                        }}</small>
+                    </div>
+                </div>
+
+                <!-- Salaire de base -->
+                <div class="flex flex-col gap-1">
+                    <label class="font-semibold"
+                        >Salaire de base
+                        <span class="text-red-500">*</span></label
+                    >
+                    <InputNumber
+                        v-model="form.salary_base"
+                        :invalid="!!form.errors.salary_base"
+                        :min="0"
+                        fluid
+                    />
+                    <small
+                        v-if="form.errors.salary_base"
+                        class="text-red-500"
+                        >{{ form.errors.salary_base }}</small
+                    >
+                </div>
+
+                <!-- User ID — optionnel -->
+                <div class="flex flex-col gap-1">
+                    <label class="font-semibold text-slate-500">
+                        ID Compte utilisateur
+                        <span class="text-xs font-normal text-slate-400"
+                            >(optionnel)</span
+                        >
+                    </label>
+                    <InputNumber
+                        v-model="form.user_id"
+                        :min="1"
+                        placeholder="Laisser vide si aucun compte lié"
+                        fluid
+                    />
+                    <small class="text-slate-400"
+                        >Lier cet employé à un compte utilisateur
+                        existant.</small
+                    >
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <template #footer>
+                <Button
+                    label="Annuler"
+                    icon="pi pi-times"
+                    severity="secondary"
+                    variant="text"
+                    @click="closeDialog"
+                />
+                <Button
+                    :label="isEditing ? 'Mettre à jour' : 'Créer'"
+                    icon="pi pi-check"
+                    class="!bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-0"
+                    :loading="form.processing"
+                    @click="submitForm"
+                />
+            </template>
+        </Dialog>
+    </AppLayout>
+</template>

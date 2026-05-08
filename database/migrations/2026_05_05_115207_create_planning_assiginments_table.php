@@ -12,20 +12,15 @@ return new class extends Migration {
     {
         Schema::create('planning_assignments', function (Blueprint $table) {
             $table->id();
-            // Relations avec contraintes
             $table->foreignId('planning_model_id')->constrained('planning_models')->onDelete('cascade');
             $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
-
-            // Dates de validité
             $table->date('start_date');
             $table->date('end_date');
-
-            // Statut et validation
-            $table->string('status')->default('en attente');
-            $table->foreignId('validated_by')->nullable()->constrained('employees')->onDelete('set null');
+            $table->enum('status', ['en attente', 'validé', 'suspendu', 'terminé'])->default('en attente');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('validated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamp('validated_at')->nullable();
-
-            $table->timestamps(); // Gère created_at et updated_at
+            $table->timestamps();
         });
     }
 

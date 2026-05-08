@@ -1,17 +1,40 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { Head, useForm } from '@inertiajs/vue3';
-import AppLayout from '@/Layouts/AppLayout.vue';
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
-import InputNumber from 'primevue/inputnumber';
-import Badge from 'primevue/badge';
-import { Plus, Edit2, Calendar, User, ArrowRight, X, Clock } from 'lucide-vue-next';
+import { ref, computed } from "vue";
+import { Head, useForm, router } from "@inertiajs/vue3";
+import AppLayout from "@/Layouts/AppLayout.vue";
+import Button from "primevue/button";
+import Dialog from "primevue/dialog";
+import InputText from "primevue/inputtext";
+import InputNumber from "primevue/inputnumber";
+import Badge from "primevue/badge";
+import {
+    Plus,
+    Edit2,
+    Calendar,
+    User,
+    ArrowRight,
+    X,
+    Clock,
+    UserCog,
+    Users,
+    CheckCircle,
+    History,
+} from "lucide-vue-next";
+
+const tabs = [
+    { name: "Modèles", href: route('planning.models.index'), icon: Clock },
+    { name: "Affectations", href: route('planning.assignments.index'), icon: Users },
+    { name: "Validation", href: route('planning.assignments.validation'), icon: CheckCircle },
+    { name: "Historique", href: route('planning.assignments.history'), icon: History },
+];
+
+const currentTab = computed(() => {
+    return tabs.find(tab => tab.href === window.location.pathname)?.name || "Modèles";
+});
 
 const props = defineProps({
     planningModels: Array,
-    activeAssignments: Array
+    activeAssignments: Array,
 });
 
 const showModal = ref(false);
@@ -19,8 +42,8 @@ const isEditing = ref(false);
 const editingId = ref(null);
 
 const form = useForm({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     monday_hours: 0,
     tuesday_hours: 0,
     wednesday_hours: 0,
@@ -32,10 +55,14 @@ const form = useForm({
 });
 
 const autoTotal = computed(() => {
-    const total = Number(form.monday_hours || 0) + Number(form.tuesday_hours || 0) +
-                  Number(form.wednesday_hours || 0) + Number(form.thursday_hours || 0) +
-                  Number(form.friday_hours || 0) + Number(form.saturday_hours || 0) +
-                  Number(form.sunday_hours || 0);
+    const total =
+        Number(form.monday_hours || 0) +
+        Number(form.tuesday_hours || 0) +
+        Number(form.wednesday_hours || 0) +
+        Number(form.thursday_hours || 0) +
+        Number(form.friday_hours || 0) +
+        Number(form.saturday_hours || 0) +
+        Number(form.sunday_hours || 0);
     form.total_hours = total;
     return total;
 });
@@ -50,7 +77,6 @@ const openCreateModal = () => {
 const openEditModal = (model) => {
     isEditing.value = true;
     editingId.value = model.id;
-    // Remplissage précis du formulaire
     form.name = model.name;
     form.description = model.description;
     form.monday_hours = Number(model.monday_hours);
@@ -65,30 +91,30 @@ const openEditModal = (model) => {
 
 const submit = () => {
     if (isEditing.value) {
-        form.put(route('planning.models.update', editingId.value), {
+        form.put(route("planning.models.update", editingId.value), {
             onSuccess: () => {
-                showModal.value = false; // Ferme la modale
+                showModal.value = false;
                 form.reset();
-            }
+            },
         });
     } else {
-        form.post(route('planning.models.store'), {
+        form.post(route("planning.models.store"), {
             onSuccess: () => {
-                showModal.value = false; // Ferme la modale
+                showModal.value = false;
                 form.reset();
-            }
+            },
         });
     }
 };
 
 const weekDays = [
-    { label: 'Lun', key: 'monday_hours' },
-    { label: 'Mar', key: 'tuesday_hours' },
-    { label: 'Mer', key: 'wednesday_hours' },
-    { label: 'Jeu', key: 'thursday_hours' },
-    { label: 'Ven', key: 'friday_hours' },
-    { label: 'Sam', key: 'saturday_hours' },
-    { label: 'Dim', key: 'sunday_hours' },
+    { label: "Lun", key: "monday_hours" },
+    { label: "Mar", key: "tuesday_hours" },
+    { label: "Mer", key: "wednesday_hours" },
+    { label: "Jeu", key: "thursday_hours" },
+    { label: "Ven", key: "friday_hours" },
+    { label: "Sam", key: "saturday_hours" },
+    { label: "Dim", key: "sunday_hours" },
 ];
 </script>
 
@@ -97,135 +123,284 @@ const weekDays = [
 
     <AppLayout>
         <template #header>
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-xl font-black text-slate-800">Paramétrage Plannings</h2>
-                    <p class="text-blue-500/70 text-[10px] font-bold uppercase tracking-widest mt-1">Gérez vos structures horaires</p>
+            <div class="mb-6">
+                <div class="flex justify-between items-center gap-8 mb-4">
+                    <div class="min-w-0">
+                        <h2 class="text-xl font-black text-slate-800 truncate">
+                            Paramétrage Plannings
+                        </h2>
+                        <p
+                            class="text-blue-500/70 text-[10px] font-bold uppercase tracking-widest mt-1"
+                        >
+                            Gérez vos structures horaires
+                        </p>
+                    </div>
+
+                    <Button
+                        @click="openCreateModal"
+                        class="flex-shrink-0 !bg-blue-600 !border-none !rounded-xl !px-6 !py-3 flex items-center gap-2 shadow-lg shadow-blue-100 hover:!bg-blue-700 transition-all"
+                    >
+                        <Plus class="w-4 h-4 text-white" />
+                        <span class="font-bold text-white text-sm whitespace-nowrap"
+                            >Nouveau modèle</span
+                        >
+                    </Button>
                 </div>
-                <Button @click="openCreateModal" class="!bg-blue-600 !border-none !rounded-xl !px-6 !py-3 flex gap-2 shadow-lg shadow-blue-100 hover:!bg-blue-700 transition-all">
-                    <Plus class="w-4 h-4 text-white" />
-                    <span class="font-bold text-white text-sm">Nouveau modèle</span>
-                </Button>
+
+                <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.name"
+                        @click="router.visit(tab.href)"
+                        class="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all"
+                        :class="
+                            currentTab === tab.name
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                        "
+                    >
+                        <tab.icon class="w-4 h-4" />
+                        <span>{{ tab.name }}</span>
+                    </button>
+                </div>
             </div>
         </template>
 
         <div class="grid grid-cols-12 gap-6 py-6">
-            <!-- Liste (Col 5) -->
             <section class="col-span-12 lg:col-span-5 space-y-4">
-                <div v-for="model in planningModels" :key="model.id"
-                    class="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:border-blue-200 transition-all">
+                <div
+                    v-for="model in planningModels"
+                    :key="model.id"
+                    class="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:border-blue-200 transition-all group"
+                >
                     <div class="flex justify-between items-start mb-4">
-                        <h4 class="font-bold text-slate-800 tracking-tight">{{ model.name }}</h4>
-                        <Badge :value="model.total_hours + 'h'" class="!bg-blue-50 !text-blue-600 !text-[10px] !font-black !px-2.5" />
+                        <h4 class="font-bold text-slate-800 tracking-tight">
+                            {{ model.name }}
+                        </h4>
+                        <Badge
+                            :value="model.total_hours + 'h'"
+                            class="!bg-blue-50 !text-blue-600 !text-[10px] !font-black !px-2.5"
+                        />
                     </div>
+
                     <div class="flex gap-1 mb-4">
-                        <div v-for="day in weekDays" :key="day.key"
-                            class="flex-1 flex flex-col items-center py-2 rounded-lg border text-[9px]"
-                            :class="Number(model[day.key]) > 0 ? 'bg-blue-50 border-blue-100 text-blue-600 font-bold' : 'bg-slate-50 border-transparent text-slate-300 opacity-50'">
+                        <div
+                            v-for="day in weekDays"
+                            :key="day.key"
+                            class="flex-1 flex flex-col items-center py-2 rounded-lg border text-[9px] transition-colors"
+                            :class="
+                                Number(model[day.key]) > 0
+                                    ? 'bg-blue-50 border-blue-100 text-blue-600 font-bold'
+                                    : 'bg-slate-50 border-transparent text-slate-300 opacity-50'
+                            "
+                        >
                             <span>{{ day.label }}</span>
-                            <span v-if="Number(model[day.key]) > 0">{{ Number(model[day.key]) }}</span>
+                            <span v-if="Number(model[day.key]) > 0">{{
+                                Number(model[day.key])
+                            }}</span>
                         </div>
                     </div>
-                    <div class="flex justify-between items-center pt-3 border-t border-slate-50">
-                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase">
-                            <User class="w-3 h-3 text-blue-400" /> {{ model.planning_assignments_count }} Assignés
-                        </span>
-                        <Button @click="openEditModal(model)" class="!bg-slate-50 !p-2.5 !rounded-lg hover:!bg-blue-50 transition-colors">
-                            <Edit2 class="w-3.5 h-3.5 text-slate-400" />
+
+                    <div
+                        class="flex justify-between items-center pt-3 border-t border-slate-50"
+                    >
+                        <div class="space-y-1">
+                            <span
+                                class="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 uppercase"
+                            >
+                                <User class="w-3 h-3 text-blue-400" />
+                                {{ model.assignments_count }} Assignés
+                            </span>
+                            <span
+                                class="text-[9px] font-black text-blue-500/60 uppercase tracking-tight flex items-center gap-1.5"
+                            >
+                                <UserCog class="w-3 h-3" /> Créé par
+                                {{ model.creator?.name || "Système" }}
+                            </span>
+                        </div>
+
+                        <Button
+                            @click="openEditModal(model)"
+                            class="!bg-slate-50 !p-2.5 !rounded-lg hover:!bg-blue-50 transition-colors"
+                        >
+                            <Edit2
+                                class="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600"
+                            />
                         </Button>
                     </div>
                 </div>
             </section>
 
-            <!-- Affectations (Col 7) -->
-            <section class="col-span-12 lg:col-span-7 bg-white border border-slate-100 rounded-[2rem] p-6 h-fit shadow-sm">
-                <h3 class="text-xs font-black text-slate-800 mb-5 flex items-center gap-2 uppercase tracking-widest text-slate-400">
-                    <div class="w-1 h-4 bg-blue-500 rounded-full"></div> Affectations actives
+            <!-- <section
+                class="col-span-12 lg:col-span-7 bg-white border border-slate-100 rounded-[2rem] p-6 h-fit shadow-sm"
+            >
+                <h3
+                    class="text-xs font-black text-slate-400 mb-5 flex items-center gap-2 uppercase tracking-widest"
+                >
+                    <div class="w-1 h-4 bg-blue-500 rounded-full"></div>
+                    Affectations actives
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div v-for="assign in activeAssignments" :key="assign.id"
-                        class="p-4 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center gap-4 group hover:bg-white hover:shadow-md transition-all">
-                        <div class="bg-white p-3 rounded-lg shadow-sm group-hover:bg-blue-50 transition-colors">
+                    <div
+                        v-for="assign in activeAssignments"
+                        :key="assign.id"
+                        class="p-4 bg-slate-50/50 border border-slate-100 rounded-xl flex items-center gap-4 group hover:bg-white hover:shadow-md transition-all"
+                    >
+                        <div
+                            class="bg-white p-3 rounded-lg shadow-sm group-hover:bg-blue-50 transition-colors"
+                        >
                             <Calendar class="w-4 h-4 text-blue-500" />
                         </div>
                         <div class="overflow-hidden">
-                            <h4 class="font-bold text-slate-800 text-xs truncate uppercase">{{ assign.user_name }}</h4>
-                            <p class="text-[10px] font-bold text-blue-500 truncate">{{ assign.model_name }}</p>
-                            <div class="flex items-center gap-2 mt-1 text-[9px] font-black text-slate-400 bg-white w-fit px-2 py-0.5 rounded border border-slate-100">
-                                <span>{{ assign.start_date }}</span> <ArrowRight class="w-2 h-2 text-blue-300" /> <span>{{ assign.end_date }}</span>
+                            <h4
+                                class="font-bold text-slate-800 text-xs truncate uppercase"
+                            >
+                                {{ assign.user_name }}
+                            </h4>
+                            <p
+                                class="text-[10px] font-bold text-blue-500 truncate"
+                            >
+                                {{ assign.model_name }}
+                            </p>
+                            <div
+                                class="flex items-center gap-2 mt-1 text-[9px] font-black text-slate-400 bg-white w-fit px-2 py-0.5 rounded border border-slate-100"
+                            >
+                                <span>{{ assign.start_date }}</span>
+                                <ArrowRight class="w-2 h-2 text-blue-300" />
+                                <span>{{ assign.end_date }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
-            </section>
+            </section> -->
         </div>
 
-        <!-- MODALE DYNAMIQUE GLASSMORPHISM -->
-        <Dialog v-model:visible="showModal" modal header=" " :style="{ width: '38rem' }"
+        <Dialog
+            v-model:visible="showModal"
+            modal
+            header=" "
+            :style="{ width: '38rem' }"
             :pt="{
-                root: { class: '!rounded-[2rem] !bg-white/90 !backdrop-blur-2xl !border !border-white !shadow-2xl' },
-                content: { class: '!p-9' }
-            }">
-
+                root: {
+                    class: '!rounded-[2rem] !bg-white/90 !backdrop-blur-2xl !border !border-white !shadow-2xl',
+                },
+                content: { class: '!p-9' },
+            }"
+        >
             <div class="mb-10 flex justify-between items-center">
                 <div class="flex items-center gap-5">
-                    <div class="p-4 bg-blue-600 rounded-2xl shadow-xl shadow-blue-100">
+                    <div
+                        class="p-4 bg-blue-600 rounded-2xl shadow-xl shadow-blue-100"
+                    >
                         <Clock class="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h3 class="text-2xl font-black text-slate-800 tracking-tight leading-none">
-                            {{ isEditing ? 'Éditer le modèle' : 'Nouveau modèle' }}
+                        <h3
+                            class="text-2xl font-black text-slate-800 tracking-tight leading-none"
+                        >
+                            {{
+                                isEditing
+                                    ? "Éditer le modèle"
+                                    : "Nouveau modèle"
+                            }}
                         </h3>
-                        <p class="text-[10px] font-bold text-blue-500/60 uppercase tracking-[0.2em] mt-2">
-                            Répartition du temps de travail
+                        <p
+                            class="text-[10px] font-bold text-blue-500/60 uppercase tracking-[0.2em] mt-2"
+                        >
+                            Structure horaire hebdomadaire
                         </p>
                     </div>
                 </div>
-                <Button @click="showModal = false" text class="!p-2 hover:!bg-slate-100 !rounded-full transition-colors"><X class="w-6 h-6 text-slate-300" /></Button>
+                <Button
+                    @click="showModal = false"
+                    text
+                    class="!p-2 hover:!bg-slate-100 !rounded-full transition-colors"
+                    ><X class="w-6 h-6 text-slate-300"
+                /></Button>
             </div>
 
             <form @submit.prevent="submit" class="space-y-8">
-                <!-- Nom : On occupe l'espace avec un input plus haut -->
                 <div class="flex flex-col gap-3">
-                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom du modèle</label>
-                    <InputText v-model="form.name"
-                        placeholder="Ex: Horaire Standard"
-                        class="!rounded-2xl !py-5 !px-6 !bg-white !border-slate-100 !text-base !font-bold focus:!border-blue-500 !shadow-sm transition-all" />
+                    <label
+                        class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1"
+                        >Dénomination</label
+                    >
+                    <InputText
+                        v-model="form.name"
+                        placeholder="Ex: Équipe Production Matin"
+                        class="!rounded-2xl !py-5 !px-6 !bg-white !border-slate-100 !text-base !font-bold focus:!border-blue-500 !shadow-sm transition-all"
+                    />
                 </div>
 
-                <!-- Jours : On densifie l'affichage -->
-                <div class="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100">
-                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 block text-center">Heures par jour</label>
+                <div
+                    class="bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100"
+                >
+                    <label
+                        class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6 block text-center"
+                        >Heures par jour</label
+                    >
                     <div class="grid grid-cols-7 gap-3">
-                        <div v-for="day in weekDays" :key="day.key" class="flex flex-col gap-3">
-                            <span class="text-[10px] font-black text-center text-blue-600/70 uppercase italic">{{ day.label }}</span>
-                            <InputNumber v-model="form[day.key]" :min="0" :max="24" :maxFractionDigits="1"
-                                inputClass="!w-full !text-center !py-4 !rounded-xl !bg-white !border-none !shadow-sm !text-sm !font-black text-slate-700 focus:!ring-2 !ring-blue-500" />
+                        <div
+                            v-for="day in weekDays"
+                            :key="day.key"
+                            class="flex flex-col gap-3"
+                        >
+                            <span
+                                class="text-[10px] font-black text-center text-blue-600/70 uppercase italic"
+                                >{{ day.label }}</span
+                            >
+                            <InputNumber
+                                v-model="form[day.key]"
+                                :min="0"
+                                :max="24"
+                                :maxFractionDigits="1"
+                                inputClass="!w-full !text-center !py-4 !rounded-xl !bg-white !border-none !shadow-sm !text-sm !font-black text-slate-700 focus:!ring-2 !ring-blue-500"
+                            />
                         </div>
                     </div>
                 </div>
 
-                <!-- Total : Bloc imposant pour remplir le bas -->
-                <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-8 rounded-[1rem] flex justify-between items-center text-white shadow-2xl shadow-blue-200">
+                <div
+                    class="bg-gradient-to-br from-blue-500 to-blue-600 p-8 rounded-[1rem] flex justify-between items-center text-white shadow-2xl shadow-blue-200"
+                >
                     <div class="flex items-center gap-5">
-                        <div class="p-4 bg-white/20 rounded-2xl backdrop-blur-md border border-white/30">
+                        <div
+                            class="p-4 bg-white/20 rounded-2xl backdrop-blur-md border border-white/30"
+                        >
                             <Clock class="w-7 h-7" />
                         </div>
-                        <div>
-                            <span class="text-[11px] font-black uppercase tracking-[0.25em] text-blue-100">Cumul Hebdomadaire</span>
-                        </div>
+                        <span
+                            class="text-[11px] font-black uppercase tracking-[0.25em] text-blue-100"
+                            >Total Hebdomadaire</span
+                        >
                     </div>
-                    <div class="text-5xl font-black tabular-nums tracking-tighter">
-                        {{ autoTotal }}<span class="text-xl ml-2 opacity-50 font-medium">h</span>
+                    <div
+                        class="text-5xl font-black tabular-nums tracking-tighter"
+                    >
+                        {{ autoTotal
+                        }}<span class="text-xl ml-2 opacity-50 font-medium"
+                            >h</span
+                        >
                     </div>
                 </div>
 
-                <!-- Actions massives -->
                 <div class="flex gap-4 pt-2">
-                    <Button label="Annuler" @click="showModal = false" text class="flex-1 !py-5 !rounded-2xl !text-sm !font-bold !text-slate-400 hover:!bg-slate-100" />
-                    <Button type="submit" :loading="form.processing"
-                        class="flex-1 !bg-blue-600 !border-none !py-5 !rounded-2xl !text-sm !font-black !text-white shadow-xl shadow-blue-100 hover:!bg-blue-700 transition-all">
-                        {{ isEditing ? 'Confirmer' : 'Enregistrer' }}
+                    <Button
+                        label="Annuler"
+                        @click="showModal = false"
+                        text
+                        class="flex-1 !py-5 !rounded-2xl !text-sm !font-bold !text-slate-400 hover:!bg-slate-100"
+                    />
+                    <Button
+                        type="submit"
+                        :loading="form.processing"
+                        class="flex-1 !bg-blue-600 !border-none !py-5 !rounded-2xl !text-sm !font-black !text-white shadow-xl shadow-blue-100 hover:!bg-blue-700 transition-all"
+                    >
+                        {{
+                            isEditing
+                                ? "Appliquer les modifications"
+                                : "Créer le modèle"
+                        }}
                     </Button>
                 </div>
             </form>
@@ -234,7 +409,12 @@ const weekDays = [
 </template>
 
 <style scoped>
-:deep(.p-inputnumber-input) { -moz-appearance: textfield; }
+:deep(.p-inputnumber-input) {
+    -moz-appearance: textfield;
+}
 :deep(.p-inputnumber-input::-webkit-outer-spin-button),
-:deep(.p-inputnumber-input::-webkit-inner-spin-button) { -webkit-appearance: none; margin: 0; }
+:deep(.p-inputnumber-input::-webkit-inner-spin-button) {
+    -webkit-appearance: none;
+    margin: 0;
+}
 </style>
