@@ -33,7 +33,9 @@ class ReportingController extends Controller
                 'assignments' => Assignment::where('status', 'actif')->count(),
                 'workedHours' => TimesheetEntry::sum('total_hours'),
                 'overtimeHours' => TimesheetEntry::sum('overtime_hours'),
+
                 'pendingTimesheets' => Timesheet::where('status', 'soumis')->count(),
+
             ],
 
             'campaignStats' => Campaign::withCount(['assignments' => function($query) {
@@ -212,22 +214,6 @@ class ReportingController extends Controller
             ->groupBy('date')
             ->orderBy('date')
             ->get()
-        ]);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | ALERTES & NOTIFICATIONS
-    |--------------------------------------------------------------------------
-    */
-
-    public function alerts()
-    {
-        return Inertia::render('Dashboard/Alerts', [
-
-            'logs' => ActivityLog::latest()
-                ->take(20)
-                ->get()
         ]);
     }
 

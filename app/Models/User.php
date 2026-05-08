@@ -22,6 +22,23 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    /**
+     * Vérifie si l'utilisateur a un rôle spécifique.
+     * Peut accepter un seul rôle ou un tableau de rôles.
+     */
+    public function hasRole($roles): bool
+    {
+        if (!$this->role) {
+            return false;
+        }
+
+        if (is_array($roles)) {
+            return in_array($this->role->name, $roles);
+        }
+
+        return $this->role->name === $roles;
+    }
+
     public function employee()
     {
         return $this->hasOne(Employee::class);

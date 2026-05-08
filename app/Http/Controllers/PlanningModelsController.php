@@ -27,10 +27,10 @@ class PlanningModelsController extends Controller
                 ->get()
                 ->map(fn($assign) => [
                     'id' => $assign->id,
-                    'user_name' => $assign->employee->user->name,
-                    'model_name' => $assign->planningModel->name,
-                    'start_date' => $assign->start_date->format('Y-m-d'),
-                    'end_date' => $assign->end_date->format('Y-m-d'),
+                    'user_name' => $assign->employee?->user?->name ?? 'N/A',
+                    'model_name' => $assign->planningModel?->name ?? 'N/A',
+                    'start_date' => $assign->start_date ? $assign->start_date->format('Y-m-d') : 'N/A',
+                    'end_date' => $assign->end_date ? $assign->end_date->format('Y-m-d') : 'N/A',
                 ]),
         ]);
     }

@@ -43,20 +43,20 @@ class PlanningAssignmentController extends Controller
                 ],
                 'assignments' => $supervisorAssignments->map(fn($a) => [
                     'id' => $a->id,
-                    'model' => ['name' => $a->planningModel->name],
-                    'start_date' => $a->start_date->format('d/m/Y'),
-                    'end_date' => $a->end_date->format('d/m/Y'),
+                    'model' => ['name' => $a->planningModel?->name ?? 'N/A'],
+                    'start_date' => $a->start_date ? $a->start_date->format('d/m/Y') : 'N/A',
+                    'end_date' => $a->end_date ? $a->end_date->format('d/m/Y') : 'N/A',
                     'status' => $a->status,
                 ]),
                 'teleconseillers' => $teleconseillerAssignments->map(fn($a) => [
                     'id' => $a->id,
                     'employee' => [
-                        'name' => $a->employee->user->name,
-                        'role' => $a->employee->user->role?->name ?? 'N/A',
+                        'name' => $a->employee?->user?->name ?? 'N/A',
+                        'role' => $a->employee?->user?->role?->name ?? 'N/A',
                     ],
-                    'model' => ['name' => $a->planningModel->name],
-                    'start_date' => $a->start_date->format('d/m/Y'),
-                    'end_date' => $a->end_date->format('d/m/Y'),
+                    'model' => ['name' => $a->planningModel?->name ?? 'N/A'],
+                    'start_date' => $a->start_date ? $a->start_date->format('d/m/Y') : 'N/A',
+                    'end_date' => $a->end_date ? $a->end_date->format('d/m/Y') : 'N/A',
                     'status' => $a->status,
                 ]),
             ];
