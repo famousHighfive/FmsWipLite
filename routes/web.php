@@ -7,6 +7,8 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\PlanningModelsController;
 use App\Http\Controllers\PlanningAssignmentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TimesheetController;
+use App\Http\Controllers\TimesheetEntryController;
 use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
@@ -22,14 +24,16 @@ use Inertia\Inertia;
 Route::get('/', function () {
     if (auth()->check()) {
         $role = auth()->user()->role?->name;
+
         return redirect()->route(match ($role) {
             'admin' => 'dashboard.admin',
-            'cp'    => 'dashboard.cp',
-            'sup'   => 'dashboard.sup',
-            'tc'    => 'dashboard.tc',
+            'cp' => 'dashboard.cp',
+            'sup' => 'dashboard.sup',
+            'tc' => 'dashboard.tc',
             default => 'dashboard.tc',
         });
     }
+
     return redirect()->route('login');
 });
 
@@ -38,15 +42,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Route /dashboard redirige aussi selon le rôle (évite le bug TeleConseiller pour CP)
     Route::get('/dashboard', function () {
         $role = auth()->user()->role?->name;
+
         return redirect()->route(match ($role) {
             'admin' => 'dashboard.admin',
-            'cp'    => 'dashboard.cp',
-            'sup'   => 'dashboard.sup',
-            'tc'    => 'dashboard.tc',
+            'cp' => 'dashboard.cp',
+            'sup' => 'dashboard.sup',
+            'tc' => 'dashboard.tc',
             default => 'dashboard.tc',
         });
     })->name('dashboard');
 
+    Route::get('/dashboard/admin', [ReportingController::class, 'admin'])->middleware('role:admin')->name('dashboard.admin');
+    Route::get('/reports/export/excel', [ReportingController::class, 'exportExcel'])->name('reports.export.excel');
+    Route::get('/reports/export/pdf', [ReportingController::class, 'exportPdf'])->name('reports.export.pdf');
+
+    Route::get('/dashboard/cp', function () {
+        return Inertia::render('Dashboard/ChefPlateau');
+    })->middleware('role:cp,admin')->name('dashboard.cp');
+
+    Route::get('/dashboard/sup', function () {
+        return Inertia::render('Dashboard/Superviseur');
+    })->middleware('role:sup,admin')->name('dashboard.sup');
+
+    Route::get('/dashboard/tc', function () {
+        return Inertia::render('Dashboard/TeleConseiller');
+    })->middleware('role:tc,admin')->name('dashboard.tc');
+
+    Route::get('/employees', function () {
+        return Inertia::render('Employees/Index');
+    })->middleware('role:admin')->name('employees.index');
     Route::get('/users/roles', [RoleController::class, 'index'])
             ->name('roles.index');
 
@@ -99,6 +123,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile/password', [ProfileController::class, 'edit'])->name('profile.password');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/calendar', [TimesheetController::class, 'index'])->name('calendar.index');
+    // Route pour enregistrer ou mettre à jour une entrée de temps
 
     Route::resource('/employees', EmployeeController::class);
     Route::prefix('employees')->name('employees.')->group(function () {
@@ -223,6 +249,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
 });
+Route::post('/timesheet-entries', [TimesheetEntryController::class, 'store']);
+Route::post('/timesheets/{timesheet}/submit', [TimesheetController::class, 'submit'])->name('timesheets.submit');
 
 
 require __DIR__.'/auth.php';

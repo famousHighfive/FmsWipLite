@@ -79,7 +79,7 @@ class Employee extends Model
         self::STATUS_INACTIF,
         self::STATUS_SUSPENDU,
     ];
-    
+
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);

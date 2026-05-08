@@ -12,7 +12,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
-class TimesheetController extends Controller
+class TimesheetController extends Controller 
 {
     public function index()
     {
@@ -197,4 +197,30 @@ class TimesheetController extends Controller
     {
         return Inertia::render('Timesheets/Overtime');
     }
+
+    /**
+ * Soumet définitivement la feuille de temps (Verrouillage).
+ */
+/**
+ * Validation finale par le Chef de Plateau (CP)
+ */
+public function submit(Timesheet $timesheet)
+{
+    // 1. Vérification de sécurité : Seul un CP (ou Admin) devrait pouvoir faire ça
+    // if (auth()->user()->role->code !== 'CP') { abort(403); }
+
+    // 2. Mise à jour de la feuille de temps
+    $timesheet->update([
+        'status' => 'soumis',
+        'validated_by' => auth()->user()->employee->id, // L'ID de l'employé qui valide
+        'validated_at' => now(), // Horodatage précis
+    ]);
+
+    // 3. Optionnel : On peut aussi verrouiller les entrées individuelles
+    // $timesheet->entries()->update(['status' => 'soumis']);
+
+    return back()->with('success', 'La feuille de temps a été validée par ' . auth()->user()->name);
+}
+
+
 }
