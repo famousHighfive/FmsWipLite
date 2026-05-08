@@ -16,27 +16,34 @@ class TimesheetController extends Controller
     /**
      * Affiche la liste des feuilles de temps (Calendrier).
      */
- public function index()
+public function index()
 {
-    $employee = auth()->user()->employee;
-    $role = auth()->user()->role->name; // 'tc', 'sup', 'cp'
+    $user = auth()->user();
+    $employee = $user->employee;
+    $role = strtoupper($user->role->name); // Normalisation en majuscules
 
+    // Préparation de la requête de base
     $query = Timesheet::with(['employee', 'validator', 'entries']);
 
-    if ($role === 'sup') {
-        // Le SUP ne voit QUE les TC qui lui sont assignés
+    // --- LOGIQUE DE FILTRAGE PAR RÔLE ---
+
+    if ($role === 'ADMIN') {
+        // L'ADMIN voit TOUT le monde sans exception
+        // On ne rajoute aucun "where", la requête reste brute
+    } 
+    elseif ($role === 'SUP' || $role === 'CP') {
+        // Sécurité : Si SUP ou CP n'a pas de profil employé, il ne voit rien (évite le crash ID on null)
+        if (!$employee) return Inertia::render('Timesheets/Calendar', ['calendar' => []]);
+
+        // Filtrage par affectation directe
         $query->whereHas('employee.assignments', function ($q) use ($employee) {
-            $q->where('manager_id', $employee->id)->where('status', 'actif');
+            $q->where('manager_id', $employee->id)
+              ->where('status', 'actif');
         });
     } 
-    elseif ($role === 'cp') {
-        // Le CP ne voit QUE les SUP qui lui sont assignés
-        $query->whereHas('employee.assignments', function ($q) use ($employee) {
-            $q->where('manager_id', $employee->id)->where('status', 'actif');
-        });
-    } 
-    else {
-        // Le TC ne voit QUE sa propre ligne
+    elseif ($role === 'TC') {
+        if (!$employee) return Inertia::render('Timesheets/Calendar', ['calendar' => []]);
+        // Le TC ne voit que lui-même
         $query->where('employee_id', $employee->id);
     }
 
@@ -44,6 +51,7 @@ class TimesheetController extends Controller
         'calendar' => $query->latest()->get()
     ]);
 }
+
 
 
 
