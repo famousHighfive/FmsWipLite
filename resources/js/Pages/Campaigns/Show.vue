@@ -176,7 +176,7 @@ const reassignData = ref({
 
 // Données pour la libération (Solo, Cascade ou Transfert)
 const releaseData = ref({ 
-    mode: 'solo', 
+    mode: 'solo', // 'solo' = avec remplacement obligatoire pour responsable, 'cascade' = tout libérer
     new_manager_id: null, 
     reason: '' 
 });
@@ -244,10 +244,16 @@ const openRelease = (assignment) => {
 };
 
 /**
- * Exécute la libération (Solo, Cascade ou Transfert de l'équipe)
+ * Exécute la libération (Solo avec remplacement, Cascade ou Transfert)
  */
 const executeRelease = () => {
-    // Si on choisit le transfert de l'équipe, il faut un remplaçant
+    // Si c'est un responsable (CP ou SUP) et qu'on choisit le mode 'solo', le remplaçant est obligatoire
+    if (selectedAssignment.value.position.code !== 'TC' && releaseData.value.mode === 'solo' && !releaseData.value.new_manager_id) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Veuillez choisir un remplaçant pour prendre la place avant de libérer le responsable.', life: 4000 });
+        return;
+    }
+
+    // Pour le mode 'transfer', le manager est aussi obligatoire
     if (releaseData.value.mode === 'transfer' && !releaseData.value.new_manager_id) {
         toast.add({ severity: 'error', summary: 'Erreur', detail: 'Veuillez choisir un remplaçant pour reprendre l\'équipe', life: 3000 });
         return;
@@ -299,7 +305,7 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                     </div>
 
                     <div class="flex gap-3">
-                        <Button label="Modifier" icon="pi pi-pencil" severity="secondary" outlined class="rounded-xl" :disabled="props.campaign.status === 'terminee'" />
+                        <Button label="Modifier" icon="pi pi-pencil" severity="secondary" outlined class="rounded-xl" />
                         <Button v-if="props.campaign.status === 'inactive'" label="Activer" icon="pi pi-check-circle" severity="success" outlined class="rounded-xl" @click="activateCampaign" />
                         <Button v-if="props.campaign.status === 'active'" label="Désactiver" icon="pi pi-power-off" severity="warn" outlined class="rounded-xl" @click="deactivateCampaign" />
                         <Button v-if="props.campaign.status !== 'terminee'" label="Clôturer" icon="pi pi-times-circle" severity="secondary" class="rounded-xl bg-slate-800 border-none" @click="closeCampaign" />
@@ -638,50 +644,38 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
 
                     <!-- Options de libération si c'est un responsable (CP ou SUP) -->
                     <div v-if="selectedAssignment.position.code !== 'TC'">
-                        <label class="font-bold block mb-3 text-slate-700 text-lg">Comment gérer son équipe ?</label>
+                        <label class="font-bold block mb-3 text-slate-700 text-lg">Que voulez-vous faire ?</label>
                         
                         <div class="flex flex-col gap-3">
-                            <!-- Solo -->
+                            <!-- Solo (Remplacement) -->
                             <div class="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer"
                                  @click="releaseData.mode = 'solo'"
                                  :class="releaseData.mode === 'solo' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-100 hover:border-blue-200'">
-                                <i class="pi pi-user text-xl text-slate-400" />
+                                <i class="pi pi-user-edit text-xl text-blue-500" />
                                 <div>
-                                    <div class="font-bold text-slate-900">Libération seule</div>
-                                    <div class="text-xs text-slate-500">L'équipe reste sans manager direct (à réaffecter plus tard).</div>
+                                    <div class="font-bold text-slate-900">Le remplacer (Solo)</div>
+                                    <div class="text-xs text-slate-500">Choisir un remplaçant qui prendra sa place et gérera ses collaborateurs.</div>
                                 </div>
                             </div>
 
-                            <!-- Transfert (Recommandé) -->
-                            <div class="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer"
-                                 @click="releaseData.mode = 'transfer'"
-                                 :class="releaseData.mode === 'transfer' ? 'border-green-600 bg-green-50/50' : 'border-slate-100 hover:border-green-200'">
-                                <i class="pi pi-sync text-xl text-green-500" />
-                                <div>
-                                    <div class="font-bold text-green-700">Transférer l'équipe</div>
-                                    <div class="text-xs text-slate-500">Toute la chaîne est rattachée à un nouveau responsable immédiatement.</div>
-                                </div>
-                            </div>
-
-                            <!-- Cascade -->
+                            <!-- Cascade (Tout libérer) -->
                             <div class="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer"
                                  @click="releaseData.mode = 'cascade'"
                                  :class="releaseData.mode === 'cascade' ? 'border-red-600 bg-red-50/50' : 'border-slate-100 hover:border-red-200'">
                                 <i class="pi pi-users text-xl text-red-500" />
                                 <div>
-                                    <div class="font-bold text-red-700">Libération en cascade</div>
-                                    <div class="text-xs text-slate-500">Toute sa chaîne (SUP et TC) est également libérée de la campagne.</div>
+                                    <div class="font-bold text-red-700">Libérer avec toute son équipe</div>
+                                    <div class="text-xs text-slate-500">Lui et tous ses subordonnés (SUP, TC) seront libérés de la campagne.</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Choix du remplaçant si transfert -->
-                    <div v-if="releaseData.mode === 'transfer'" class="animate-fade-in">
+                    <!-- Choix du remplaçant obligatoire pour le mode solo d'un responsable -->
+                    <div v-if="releaseData.mode === 'solo' && selectedAssignment.position.code !== 'TC'" class="animate-fade-in">
                         <label class="font-bold block mb-2 text-slate-700">
                             Choisir le remplaçant ({{ selectedAssignment.position.code }}) *
                         </label>
-                        <!-- On affiche les employés qui ont le même poste que celui qu'on libère -->
                         <Dropdown 
                             v-model="releaseData.new_manager_id" 
                             :options="qualifiedReplacements" 

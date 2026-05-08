@@ -57,7 +57,7 @@ const toggleMenu = (event, data) => {
     selectedCampaign.value = data;
     menuItems.value = [
         { label: 'Voir le détail', icon: 'pi pi-eye', command: () => router.get(route('campaigns.show', data.id)) },
-        { label: 'Modifier', icon: 'pi pi-pencil', disabled: data.status === 'terminee', command: () => editCampaign(data) },
+        { label: 'Modifier', icon: 'pi pi-pencil', command: () => editCampaign(data) },
         { separator: true },
         { 
             label: data.status === 'active' ? 'Désactiver' : 'Activer', 
@@ -185,9 +185,11 @@ const onPage = (event) => {
                 <SelectButton v-model="statusFilter" :options="statusOptions" class="custom-select-button" />
             </div>
 
-            <!-- Table -->
+            <!-- TABLEAU (Image 3) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <DataTable :value="props.campaigns.data" class="p-datatable-custom" responsiveLayout="stack">
+                <DataTable :value="props.campaigns.data" class="p-datatable-custom" responsiveLayout="stack" 
+                           @row-click="(e) => router.get(route('campaigns.show', e.data.id))" 
+                           rowHover style="cursor: pointer">
                     <Column field="name" header="Nom" sortable>
                         <template #body="{ data }">
                             <Link :href="route('campaigns.show', data.id)" class="font-bold text-slate-900 hover:text-blue-600 transition-colors">

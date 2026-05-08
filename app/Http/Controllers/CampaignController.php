@@ -106,11 +106,6 @@ class CampaignController extends Controller
      */
     public function update(StoreCampaignRequest $request, Campaign $campaign)
     {
-        // Une campagne terminée ne peut plus être modifiée
-        if ($campaign->status === CampaignStatus::COMPLETED->value) {
-            return redirect()->back()->with('error', "Une campagne terminée ne peut plus être modifiée.");
-        }
-
         $validated = $request->validated();
 
         DB::transaction(function () use ($campaign, $validated) {
