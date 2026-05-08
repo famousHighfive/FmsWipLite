@@ -183,28 +183,33 @@ const getStatusSeverity = (status) => {
 
 <template>
     <AppLayout>
-        <div class="p-6 bg-slate-50 min-h-screen">
-            <!-- HEADER (Image 3) -->
-            <div class="flex justify-between items-center mb-6">
+        <div class="space-y-6">
+            <!-- HEADER -->
+            <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-3xl font-bold text-slate-900">Campagnes</h1>
-                    <p class="text-slate-500">{{ props.campaigns.length }} campagnes au total</p>
+                    <h1 class="text-2xl font-black text-slate-800 tracking-tight">Gestion des Campagnes</h1>
+                    <p class="text-slate-500 font-medium">{{ props.campaigns.length }} campagnes configurées</p>
                 </div>
-                <Button label="Nouvelle campagne" icon="pi pi-plus" class="!bg-blue-600 rounded-lg px-4 py-2" @click="openNew" />
+                <Button label="Nouvelle campagne" icon="pi pi-plus" class="!bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-0 !rounded-xl !shadow-lg !shadow-blue-500/20" @click="openNew" />
             </div>
 
-            <!-- FILTRES (Image 3) -->
-            <div class="flex flex-wrap gap-4 items-center mb-6">
+            <!-- FILTRES -->
+            <div class="flex flex-wrap gap-4 items-center">
                 <div class="p-input-icon-left flex-1 min-w-[300px]">
-                    <InputText v-model="searchQuery" placeholder="Rechercher une campagne..." class="w-full pl-10 rounded-xl border-slate-200" />
+                    <i class="pi pi-search ml-3 text-slate-400" />
+                    <InputText v-model="searchQuery" placeholder="Rechercher une campagne..." class="w-full !pl-10 !rounded-2xl !border-slate-100 !bg-white/50 backdrop-blur-sm focus:!ring-2 focus:!ring-blue-500/20" />
                 </div>
-                <SelectButton v-model="statusFilter" :options="statusOptions" class="custom-select-button" />
+                <SelectButton v-model="statusFilter" :options="statusOptions" class="!rounded-2xl overflow-hidden !border-slate-100" />
             </div>
 
-            <!-- TABLEAU (Image 3) -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <DataTable :value="filteredCampaigns" class="p-datatable-custom cursor-pointer" responsiveLayout="stack" 
-                    @row-click="onRowClick" rowHover >
+            <div class="card !border-0 !shadow-sm !rounded-2xl overflow-hidden bg-white/50 backdrop-blur-sm">
+                <DataTable 
+                    :value="filteredCampaigns" 
+                    @row-click="onRowClick" 
+                    class="p-datatable-sm cursor-pointer"
+                    paginator :rows="10"
+                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                    currentPageReportTemplate="{first} à {last} sur {totalRecords}">
                     <Column field="name" header="Nom" sortable>
                         <template #body="slotProps">
                             <span class="font-bold text-slate-900 hover:text-blue-600 transition-colors">

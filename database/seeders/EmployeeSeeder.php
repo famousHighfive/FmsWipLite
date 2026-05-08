@@ -41,19 +41,27 @@ class EmployeeSeeder extends Seeder
 
         // 3. Créer 2 admins
         for ($i = 1; $i <= 2; $i++) {
-            $adminUser = User::factory()->create([
-                'email' => "admin{$i}@societe.com",
-                'role_id' => $roleAdmin->id,
-            ]);
+            $email = "admin{$i}@societe.com";
+            $adminUser = User::where('email', $email)->first();
+            
+            if (!$adminUser) {
+                $adminUser = User::factory()->create([
+                    'email' => $email,
+                    'role_id' => $roleAdmin->id,
+                ]);
+            }
 
-            Employee::factory()->create([
-                'user_id' => $adminUser->id,
-                'first_name' => $i === 1 ? 'Jean' : 'Marie',
-                'last_name' => $i === 1 ? 'Admin' : 'Admin',
-                'email' => "admin{$i}@societe.com",
-                'position_id' => $posRh->id,
-                'status' => 'actif',
-            ]);
+            $employee = Employee::where('email', $email)->first();
+            if (!$employee) {
+                Employee::factory()->create([
+                    'user_id' => $adminUser->id,
+                    'first_name' => $i === 1 ? 'Jean' : 'Marie',
+                    'last_name' => $i === 1 ? 'Admin' : 'Admin',
+                    'email' => $email,
+                    'position_id' => $posRh->id,
+                    'status' => 'actif',
+                ]);
+            }
         }
 
         // 4. Créer 10 chefs plateau
