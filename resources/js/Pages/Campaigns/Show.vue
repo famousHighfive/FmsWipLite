@@ -34,7 +34,7 @@ const activeTab = ref(0);
  * Clôturer la campagne (Status -> terminee)
  */
 const closeCampaign = () => {
-    router.patch(`/campaigns/${props.campaign.id}/status`, { status: 'terminee' }, {
+    router.patch(route('campaigns.complete', props.campaign.id), {}, {
         onSuccess: () => toast.add({ severity: 'success', summary: 'Succès', detail: 'Campagne clôturée', life: 3000 })
     });
 };
@@ -43,8 +43,17 @@ const closeCampaign = () => {
  * Désactiver la campagne (Status -> inactive)
  */
 const deactivateCampaign = () => {
-    router.patch(`/campaigns/${props.campaign.id}/status`, { status: 'inactive' }, {
+    router.patch(route('campaigns.deactivate', props.campaign.id), {}, {
         onSuccess: () => toast.add({ severity: 'success', summary: 'Succès', detail: 'Campagne désactivée', life: 3000 })
+    });
+};
+
+/**
+ * Activer la campagne (Status -> active)
+ */
+const activateCampaign = () => {
+    router.patch(route('campaigns.activate', props.campaign.id), {}, {
+        onSuccess: () => toast.add({ severity: 'success', summary: 'Succès', detail: 'Campagne activée', life: 3000 })
     });
 };
 
@@ -85,8 +94,8 @@ const newAssignment = ref({
     employee_id: null,
     manager_id: null,
     campaign_id: props.campaign.id,
-    position_id: null,
-    start_date: new Date().toISOString().substr(0, 10)
+    start_date: new Date().toISOString().substr(0, 10),
+    reason: ''
 });
 
 // Filtrer les employés par poste correspondant au type choisi (Image 2)
@@ -128,14 +137,26 @@ const nextStep = () => {
 };
 
 const saveAssignment = () => {
-    const pos = props.positions.find(p => p.code === newAssignment.value.type);
-    newAssignment.value.position_id = pos?.id;
+    const type = newAssignment.value.type;
+    let endpoint = '';
+    
+    if (type === 'CP') endpoint = route('affectations.store.cp');
+    else if (type === 'SUP') endpoint = route('affectations.store.sup');
+    else if (type === 'TC') endpoint = route('affectations.store.tc');
 
-    router.post('/assignments', newAssignment.value, {
+    router.post(endpoint, newAssignment.value, {
         onSuccess: () => {
             toast.add({ severity: 'success', summary: 'Succès', detail: 'Ressource affectée', life: 3000 });
             assignmentDialog.value = false;
             step.value = 1;
+            newAssignment.value = {
+                type: null,
+                employee_id: null,
+                manager_id: null,
+                campaign_id: props.campaign.id,
+                start_date: new Date().toISOString().substr(0, 10),
+                reason: ''
+            };
         }
     });
 };
@@ -145,47 +166,96 @@ const saveAssignment = () => {
 const reassignDialog = ref(false);
 const releaseDialog = ref(false);
 const selectedAssignment = ref(null);
-const reassignData = ref({ manager_id: null, start_date: new Date().toISOString().substr(0, 10), reason: '' });
-const releaseData = ref({ mode: 'solo', reason: '' });
+
+// Données pour la réaffectation (Changement de manager pour SUP ou TC)
+const reassignData = ref({ 
+    new_manager_id: null, 
+    start_date: new Date().toISOString().substr(0, 10), 
+    reason: '' 
+});
+
+// Données pour la libération (Solo, Cascade ou Transfert)
+const releaseData = ref({ 
+    mode: 'solo', 
+    new_manager_id: null, 
+    reason: '' 
+});
 
 /**
  * Ouvre le modal de réaffectation (Image 4)
+ * Concerne le changement de responsable pour la ressource sélectionnée
  */
 const openReassign = (assignment) => {
     selectedAssignment.value = assignment;
     reassignData.value = { 
-        manager_id: assignment.manager_id, 
+        new_manager_id: assignment.manager_id, 
         start_date: new Date().toISOString().substr(0, 10),
         reason: '' 
     };
     reassignDialog.value = true;
 };
 
+// Employés qualifiés pour remplacer la ressource sélectionnée (même poste)
+const qualifiedReplacements = computed(() => {
+    if (!selectedAssignment.value) return [];
+    const positionId = selectedAssignment.value.position_id;
+    // On retourne tous les employés qui ont le même position_id, sauf celui qu'on libère
+    return props.employees.filter(emp => 
+        emp.position_id === positionId && emp.id !== selectedAssignment.value.employee_id
+    );
+});
+
 /**
- * Enregistre la réaffectation
+ * Action pour le bouton "Voir"
+ */
+const viewEmployee = (employeeId) => {
+    // Redirection vers la fiche employé (à adapter selon votre route)
+    router.get(`/employees/${employeeId}`);
+};
+
+/**
+ * Enregistre la réaffectation (Changement de manager)
  */
 const executeReassign = () => {
-    router.post(`/assignments/${selectedAssignment.value.id}/reassign`, reassignData.value, {
+    if (!reassignData.value.new_manager_id) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Veuillez choisir un nouveau responsable', life: 3000 });
+        return;
+    }
+
+    router.post(route('affectations.reassign', selectedAssignment.value.id), reassignData.value, {
         onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Ressource réaffectée', life: 3000 });
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Ressource réaffectée avec succès', life: 3000 });
             reassignDialog.value = false;
         }
     });
 };
 
 /**
- * Ouvre le modal de libération
+ * Ouvre le modal de libération (Bouton rouge sur la div de l'employé)
  */
 const openRelease = (assignment) => {
     selectedAssignment.value = assignment;
-    releaseData.value = { mode: 'solo', reason: '' };
+    releaseData.value = { 
+        mode: 'solo', 
+        new_manager_id: null, 
+        reason: '' 
+    };
     releaseDialog.value = true;
 };
 
+/**
+ * Exécute la libération (Solo, Cascade ou Transfert de l'équipe)
+ */
 const executeRelease = () => {
-    router.post(`/assignments/${selectedAssignment.value.id}/release`, releaseData.value, {
+    // Si on choisit le transfert de l'équipe, il faut un remplaçant
+    if (releaseData.value.mode === 'transfer' && !releaseData.value.new_manager_id) {
+        toast.add({ severity: 'error', summary: 'Erreur', detail: 'Veuillez choisir un remplaçant pour reprendre l\'équipe', life: 3000 });
+        return;
+    }
+
+    router.post(route('affectations.release', selectedAssignment.value.id), releaseData.value, {
         onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Action effectuée', life: 3000 });
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Action effectuée avec succès', life: 3000 });
             releaseDialog.value = false;
         }
     });
@@ -229,7 +299,8 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                     </div>
 
                     <div class="flex gap-3">
-                        <Button label="Modifier" icon="pi pi-pencil" severity="secondary" outlined class="rounded-xl" />
+                        <Button label="Modifier" icon="pi pi-pencil" severity="secondary" outlined class="rounded-xl" :disabled="props.campaign.status === 'terminee'" />
+                        <Button v-if="props.campaign.status === 'inactive'" label="Activer" icon="pi pi-check-circle" severity="success" outlined class="rounded-xl" @click="activateCampaign" />
                         <Button v-if="props.campaign.status === 'active'" label="Désactiver" icon="pi pi-power-off" severity="warn" outlined class="rounded-xl" @click="deactivateCampaign" />
                         <Button v-if="props.campaign.status !== 'terminee'" label="Clôturer" icon="pi pi-times-circle" severity="secondary" class="rounded-xl bg-slate-800 border-none" @click="closeCampaign" />
                     </div>
@@ -295,7 +366,7 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                                         </div>
                                         <!-- Actions au survol (Image 1) -->
                                         <div v-show="hoveredId === cp.id" class="flex gap-2 animate-fade-in">
-                                            <Button icon="pi pi-eye" severity="secondary" text rounded size="small" v-tooltip.top="'Voir'" />
+                                            <Button icon="pi pi-eye" severity="secondary" text rounded size="small" v-tooltip.top="'Voir'" @click="viewEmployee(cp.employee_id)" />
                                             <Button icon="pi pi-sign-out" severity="danger" text rounded size="small" v-tooltip.top="'Libérer'" @click="openRelease(cp)" />
                                         </div>
                                     </div>
@@ -322,7 +393,7 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                                                 <!-- Actions au survol -->
                                                 <div v-show="hoveredId === sup.id" class="flex gap-2 animate-fade-in">
                                                     <Button icon="pi pi-sync" severity="info" text rounded size="small" v-tooltip.top="'Réaffecter'" @click="openReassign(sup)" />
-                                                    <Button icon="pi pi-eye" severity="secondary" text rounded size="small" v-tooltip.top="'Voir'" />
+                                                    <Button icon="pi pi-eye" severity="secondary" text rounded size="small" v-tooltip.top="'Voir'" @click="viewEmployee(sup.employee_id)" />
                                                     <Button icon="pi pi-sign-out" severity="danger" text rounded size="small" v-tooltip.top="'Libérer'" @click="openRelease(sup)" />
                                                 </div>
                                             </div>
@@ -347,7 +418,7 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                                                         <!-- Actions au survol -->
                                                         <div v-show="hoveredId === tc.id" class="flex gap-2 animate-fade-in">
                                                             <Button icon="pi pi-sync" severity="info" text rounded size="small" v-tooltip.top="'Réaffecter'" @click="openReassign(tc)" />
-                                                            <Button icon="pi pi-eye" severity="secondary" text rounded size="small" v-tooltip.top="'Voir'" />
+                                                            <Button icon="pi pi-eye" severity="secondary" text rounded size="small" v-tooltip.top="'Voir'" @click="viewEmployee(tc.employee_id)" />
                                                             <Button icon="pi pi-sign-out" severity="danger" text rounded size="small" v-tooltip.top="'Libérer'" @click="openRelease(tc)" />
                                                         </div>
                                                     </div>
@@ -522,14 +593,15 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                         <!-- Choix du nouveau responsable -->
                         <div>
                             <label class="font-bold text-slate-900 block mb-1">
-                                {{ selectedAssignment.position.code === 'TC' ? 'Superviseur *' : 'Chef de Plateau *' }}
+                                {{ selectedAssignment.position.code === 'TC' ? 'Nouveau Superviseur *' : 'Nouveau Chef de Plateau *' }}
                             </label>
                             <Dropdown 
-                                v-model="reassignData.manager_id" 
-                                :options="selectedAssignment.position.code === 'TC' ? props.assignments.filter(a => a.position.code === 'SUP') : props.assignments.filter(a => a.position.code === 'CP')" 
+                                v-model="reassignData.new_manager_id" 
+                                :options="selectedAssignment.position.code === 'TC' ? props.assignments.filter(a => a.position.code === 'SUP' && a.employee_id !== selectedAssignment.manager_id) : props.assignments.filter(a => a.position.code === 'CP' && a.employee_id !== selectedAssignment.manager_id)" 
                                 optionLabel="employee.email" 
                                 optionValue="employee_id" 
-                                placeholder="Choisir le nouveau responsable..." 
+                                filter 
+                                placeholder="Sélectionner le nouveau responsable..." 
                                 class="w-full rounded-xl border-slate-200" 
                             />
                         </div>
@@ -552,6 +624,88 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                     <div class="px-8 pb-8 flex justify-end gap-3">
                         <Button label="Annuler" severity="secondary" text @click="reassignDialog = false" class="rounded-xl px-6" />
                         <Button label="Confirmer" icon="pi pi-check" @click="executeReassign" class="rounded-xl px-8 bg-blue-600 border-none shadow-lg shadow-blue-200" />
+                    </div>
+                </template>
+            </Dialog>
+
+            <!-- MODAL DE LIBÉRATION / TRANSFERT -->
+            <Dialog v-model:visible="releaseDialog" header="Libérer une ressource" :style="{ width: '500px' }" modal class="p-fluid rounded-3xl">
+                <div v-if="selectedAssignment" class="flex flex-col gap-6 mt-4">
+                    <div class="bg-blue-50 p-4 rounded-2xl text-blue-800 text-sm border border-blue-100">
+                        <i class="pi pi-info-circle mr-2" />
+                        Vous allez libérer <b>{{ selectedAssignment.employee.first_name }} {{ selectedAssignment.employee.last_name }}</b> de la campagne <b>{{ props.campaign.name }}</b>.
+                    </div>
+
+                    <!-- Options de libération si c'est un responsable (CP ou SUP) -->
+                    <div v-if="selectedAssignment.position.code !== 'TC'">
+                        <label class="font-bold block mb-3 text-slate-700 text-lg">Comment gérer son équipe ?</label>
+                        
+                        <div class="flex flex-col gap-3">
+                            <!-- Solo -->
+                            <div class="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer"
+                                 @click="releaseData.mode = 'solo'"
+                                 :class="releaseData.mode === 'solo' ? 'border-blue-600 bg-blue-50/50' : 'border-slate-100 hover:border-blue-200'">
+                                <i class="pi pi-user text-xl text-slate-400" />
+                                <div>
+                                    <div class="font-bold text-slate-900">Libération seule</div>
+                                    <div class="text-xs text-slate-500">L'équipe reste sans manager direct (à réaffecter plus tard).</div>
+                                </div>
+                            </div>
+
+                            <!-- Transfert (Recommandé) -->
+                            <div class="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer"
+                                 @click="releaseData.mode = 'transfer'"
+                                 :class="releaseData.mode === 'transfer' ? 'border-green-600 bg-green-50/50' : 'border-slate-100 hover:border-green-200'">
+                                <i class="pi pi-sync text-xl text-green-500" />
+                                <div>
+                                    <div class="font-bold text-green-700">Transférer l'équipe</div>
+                                    <div class="text-xs text-slate-500">Toute la chaîne est rattachée à un nouveau responsable immédiatement.</div>
+                                </div>
+                            </div>
+
+                            <!-- Cascade -->
+                            <div class="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer"
+                                 @click="releaseData.mode = 'cascade'"
+                                 :class="releaseData.mode === 'cascade' ? 'border-red-600 bg-red-50/50' : 'border-slate-100 hover:border-red-200'">
+                                <i class="pi pi-users text-xl text-red-500" />
+                                <div>
+                                    <div class="font-bold text-red-700">Libération en cascade</div>
+                                    <div class="text-xs text-slate-500">Toute sa chaîne (SUP et TC) est également libérée de la campagne.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Choix du remplaçant si transfert -->
+                    <div v-if="releaseData.mode === 'transfer'" class="animate-fade-in">
+                        <label class="font-bold block mb-2 text-slate-700">
+                            Choisir le remplaçant ({{ selectedAssignment.position.code }}) *
+                        </label>
+                        <!-- On affiche les employés qui ont le même poste que celui qu'on libère -->
+                        <Dropdown 
+                            v-model="releaseData.new_manager_id" 
+                            :options="qualifiedReplacements" 
+                            optionLabel="email" 
+                            optionValue="id" 
+                            filter 
+                            placeholder="Sélectionner le remplaçant qualifié..." 
+                            class="rounded-xl border-slate-200" 
+                        />
+                    </div>
+
+                    <!-- Raison -->
+                    <div>
+                        <label class="font-bold block mb-1 text-slate-700">Motif du départ</label>
+                        <InputText v-model="releaseData.reason" placeholder="Ex: Fin de mission, mutation..." class="rounded-xl border-slate-200" />
+                    </div>
+                </div>
+
+                <template #footer>
+                    <div class="px-2 pb-2 flex justify-end gap-3">
+                        <Button label="Annuler" severity="secondary" text @click="releaseDialog = false" class="rounded-xl" />
+                        <Button label="Confirmer la libération" icon="pi pi-check" 
+                                :severity="releaseData.mode === 'cascade' ? 'danger' : 'primary'" 
+                                @click="executeRelease" class="rounded-xl px-6" />
                     </div>
                 </template>
             </Dialog>

@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\CampaignController;
+use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\AssignmentController; // Importation du contrôleur d'affectations
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -18,49 +18,39 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Dashboard
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard/TeleConseiller');
     })->name('dashboard');
 
-    Route::get('/dashboard/admin', function () {
-        return Inertia::render('Dashboard/Admin');
-    })->name('dashboard.admin');
+    // Campagnes (RESTful)
+    Route::resource('campaigns', CampaignController::class);
+    
+    // Cycle de vie des campagnes
+    Route::patch('/campaigns/{campaign}/activate', [CampaignController::class, 'activate'])->name('campaigns.activate');
+    Route::patch('/campaigns/{campaign}/deactivate', [CampaignController::class, 'deactivate'])->name('campaigns.deactivate');
+    Route::patch('/campaigns/{campaign}/complete', [CampaignController::class, 'complete'])->name('campaigns.complete');
 
-    Route::get('/dashboard/cp', function () {
-        return Inertia::render('Dashboard/ChefPlateau');
-    })->name('dashboard.cp');
+    // Affectations
+    Route::prefix('affectations')->name('affectations.')->group(function () {
+        Route::post('/cp', [AssignmentController::class, 'storeCP'])->name('store.cp');
+        Route::post('/sup', [AssignmentController::class, 'storeSUP'])->name('store.sup');
+        Route::post('/tc', [AssignmentController::class, 'storeTC'])->name('store.tc');
+        Route::post('/{assignment}/release', [AssignmentController::class, 'release'])->name('release');
+        Route::post('/{assignment}/reassign', [AssignmentController::class, 'reassign'])->name('reassign');
+        Route::get('/history', [AssignmentController::class, 'history'])->name('history');
+    });
 
-    Route::get('/dashboard/sup', function () {
-        return Inertia::render('Dashboard/Superviseur');
-    })->name('dashboard.sup');
-
-    Route::get('/dashboard/tc', function () {
-        return Inertia::render('Dashboard/TeleConseiller');
-    })->name('dashboard.tc');
-
+    // Employés et Utilisateurs
     Route::get('/employees', function () {
         return Inertia::render('Employees/Index');
     })->name('employees.index');
-
-    // Routes pour la gestion des utilisateurs
     Route::resource('users', UserController::class);
 
-    // Routes pour la gestion des affectations
-    Route::get('/assignments', [AssignmentController::class, 'index'])->name('assignments.index');
-    Route::post('/assignments', [AssignmentController::class, 'store'])->name('assignments.store');
-    Route::post('/assignments/{assignment}/release', [AssignmentController::class, 'release'])->name('assignments.release');
-    Route::post('/assignments/{assignment}/reassign', [AssignmentController::class, 'reassign'])->name('assignments.reassign');
-
+    // Profil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-
-Route::middleware('auth')->group(function () {
-    Route::resource('campaigns', CampaignController::class);
-
-    // route specifique pour le statut
-    Route::patch('/campaigns/{campaign}/status', [CampaignController::class, 'changeStatus'])->name('campaigns.status');
 });
 
 require __DIR__.'/auth.php';

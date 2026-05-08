@@ -7,6 +7,9 @@ use App\Models\AssignmentHistory;
 use App\Models\Employee;
 use App\Models\Campaign;
 use App\Models\Position;
+use App\Enums\AssignmentStatus;
+use App\Enums\CampaignStatus;
+use App\Enums\PositionCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,171 +18,337 @@ use Inertia\Inertia;
 class AssignmentController extends Controller
 {
     /**
-     * Affiche la liste des affectations (non utilisé, redirigé vers campagne detail)
+     * Liste globale des historiques d'affectation
      */
-    public function index()
+    public function history()
     {
-        return redirect()->route('campaigns.index');
+        $history = AssignmentHistory::with(['employee', 'author', 'newCampaign', 'oldCampaign'])
+            ->latest()
+            ->paginate(20);
+
+        return Inertia::render('Affectations/History', [
+            'history' => $history
+        ]);
     }
 
     /**
-     * Enregistre une nouvelle affectation et crée une trace dans l'historique
+     * Affecter un CP
      */
-    public function store(Request $request)
+    public function storeCP(Request $request)
     {
-        // Validation stricte des données reçues
         $validated = $request->validate([
-            'employee_id' => 'required|exists:employees,id', // L'employé doit exister
-            'campaign_id' => 'required|exists:campaigns,id', // La campagne doit exister
-            'manager_id' => 'nullable|exists:employees,id', // Le manager (facultatif) doit être un employé existant
-            'position_id' => 'required|exists:positions,id', // Le poste doit exister
-            'start_date' => 'required|date', // Date de début obligatoire
+            'employee_id' => 'required|exists:employees,id',
+            'campaign_id' => 'required|exists:campaigns,id',
+            'start_date' => 'required|date',
+            'reason' => 'nullable|string',
         ]);
 
-        // On utilise une transaction pour s'assurer que l'affectation et l'historique sont créés ensemble
-        DB::transaction(function () use ($validated, $request) {
-            // 1. Création de l'affectation dans la table 'assignments'
-            $assignment = Assignment::create($validated);
+        try {
+            DB::transaction(function () use ($validated) {
+                $campaign = Campaign::findOrFail($validated['campaign_id']);
+                if ($campaign->status !== CampaignStatus::ACTIVE->value) {
+                    throw new \Exception("La campagne doit être active pour recevoir des affectations.");
+                }
 
-            // 2. Création de la trace dans 'assignment_histories'
-            AssignmentHistory::create([
-                'assignment_id' => $assignment->id, // Lien vers l'affectation
-                'employee_id' => $validated['employee_id'], // L'employé concerné
-                'new_manager_id' => $validated['manager_id'] ?? null, // Nouveau manager si défini (en tant qu'employé)
-                'new_campaign_id' => $validated['campaign_id'], // Nouvelle campagne
-                'action_type' => 'assign', // Type d'action : Assignation
-                'changed_by' => Auth::id(), // Utilisateur (Admin/CP) qui a fait l'action
-                'reason' => $request->reason ?? 'Première affectation', // Raison ou commentaire
-            ]);
-        });
+                $position = Position::where('code', PositionCode::CP->value)->firstOrFail();
 
-        // Redirection vers la page précédente avec mise à jour des données via Inertia
-        return redirect()->back();
+                $assignment = Assignment::create([
+                    'employee_id' => $validated['employee_id'],
+                    'campaign_id' => $validated['campaign_id'],
+                    'position_id' => $position->id,
+                    'status' => AssignmentStatus::ACTIVE->value,
+                    'start_date' => $validated['start_date'],
+                ]);
+
+                $this->logHistory($assignment, 'assign', null, $validated['campaign_id'], $validated['reason']);
+            });
+
+            return redirect()->back()->with('success', 'Chef de Plateau affecté.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 
     /**
-     * Gère la réaffectation (changement de manager) d'une ressource
+     * Affecter un SUP
      */
-    public function reassign(Request $request, Assignment $assignment)
+    public function storeSUP(Request $request)
     {
-        // Validation des données de réaffectation
         $validated = $request->validate([
-            'manager_id' => 'required|exists:employees,id', // Le nouveau manager doit être un employé valide
-            'start_date' => 'required|date', // Date d'effet
-            'reason' => 'nullable|string', // Motif optionnel
+            'employee_id' => 'required|exists:employees,id',
+            'campaign_id' => 'required|exists:campaigns,id',
+            'manager_id' => 'required|exists:employees,id',
+            'start_date' => 'required|date',
+            'reason' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($assignment, $validated) {
-            // On sauvegarde l'ancien manager pour l'historique
-            $oldManagerId = $assignment->manager_id;
+        try {
+            DB::transaction(function () use ($validated) {
+                // Vérifier si le SUP est déjà affecté ailleurs
+                $existing = Assignment::where('employee_id', $validated['employee_id'])->where('status', 'actif')->first();
+                if ($existing) {
+                    throw new \Exception("Ce superviseur est déjà affecté à une campagne active.");
+                }
 
-            // Mise à jour de l'affectation actuelle
-            $assignment->update([
-                'manager_id' => $validated['manager_id'],
-                'start_date' => $validated['start_date'],
-            ]);
+                $position = Position::where('code', PositionCode::SUP->value)->firstOrFail();
 
-            // Enregistrement de la trace dans l'historique
-            AssignmentHistory::create([
-                'assignment_id' => $assignment->id,
-                'employee_id' => $assignment->employee_id,
-                'old_manager_id' => $oldManagerId,
-                'new_manager_id' => $validated['manager_id'],
-                'old_campaign_id' => $assignment->campaign_id,
-                'new_campaign_id' => $assignment->campaign_id,
-                'action_type' => 'transfer', // Type d'action : Transfert/Réaffectation
-                'changed_by' => Auth::id(), // Utilisateur connecté
-                'reason' => $validated['reason'] ?? 'Réaffectation manuelle',
-            ]);
-        });
+                $assignment = Assignment::create([
+                    'employee_id' => $validated['employee_id'],
+                    'campaign_id' => $validated['campaign_id'],
+                    'manager_id' => $validated['manager_id'],
+                    'position_id' => $position->id,
+                    'status' => AssignmentStatus::ACTIVE->value,
+                    'start_date' => $validated['start_date'],
+                ]);
 
-        return redirect()->back();
+                $this->logHistory($assignment, 'assign', $validated['manager_id'], $validated['campaign_id'], $validated['reason']);
+            });
+
+            return redirect()->back()->with('success', 'Superviseur affecté.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 
     /**
-     * Gère la libération ou le transfert d'une ressource (CP, SUP ou TC)
+     * Affecter un TC
+     */
+    public function storeTC(Request $request)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'manager_id' => 'required|exists:employees,id',
+            'start_date' => 'required|date',
+            'reason' => 'nullable|string',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated) {
+                // Vérifier si le TC est déjà affecté ailleurs
+                $existing = Assignment::where('employee_id', $validated['employee_id'])->where('status', 'actif')->first();
+                if ($existing) {
+                    throw new \Exception("Ce téléconseiller est déjà affecté à une campagne active.");
+                }
+
+                // Récupérer l'affectation du manager pour hériter de la campagne
+                $managerAssignment = Assignment::where('employee_id', $validated['manager_id'])
+                    ->where('status', 'actif')
+                    ->firstOrFail();
+
+                $position = Position::where('code', PositionCode::TC->value)->firstOrFail();
+
+                $assignment = Assignment::create([
+                    'employee_id' => $validated['employee_id'],
+                    'campaign_id' => $managerAssignment->campaign_id,
+                    'manager_id' => $validated['manager_id'],
+                    'position_id' => $position->id,
+                    'status' => AssignmentStatus::ACTIVE->value,
+                    'start_date' => $validated['start_date'],
+                ]);
+
+                $this->logHistory($assignment, 'assign', $validated['manager_id'], $managerAssignment->campaign_id, $validated['reason']);
+            });
+
+            return redirect()->back()->with('success', 'Téléconseiller affecté.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Libérer une affectation
      */
     public function release(Request $request, Assignment $assignment)
     {
-        // 'mode' peut être 'solo', 'cascade' ou 'transfer'
-        $mode = $request->mode; 
-        $newManagerId = $request->new_manager_id; // Nécessaire uniquement pour le mode 'transfer'
+        $validated = $request->validate([
+            'mode' => 'required|in:solo,cascade,transfer',
+            'new_manager_id' => 'nullable|exists:employees,id',
+            'reason' => 'nullable|string',
+        ]);
 
-        DB::transaction(function () use ($assignment, $mode, $newManagerId, $request) {
-            
-            // CAS 1 : TRANSFERT DE CHAINE (On change le manager de tous les subordonnés)
-            if ($mode === 'transfer' && $newManagerId) {
-                // On trouve tous les employés qui avaient cette personne comme manager sur cette campagne
-                $subordinates = Assignment::where('manager_id', $assignment->employee_id)
-                    ->where('campaign_id', $assignment->campaign_id)
-                    ->where('status', 'actif')
-                    ->get();
+        try {
+            DB::transaction(function () use ($assignment, $validated) {
+                $mode = $validated['mode'];
+                $newManagerId = $validated['new_manager_id'] ?? null;
+                $reason = $validated['reason'] ?? "Libération (Mode: $mode)";
 
-                foreach ($subordinates as $sub) {
-                    $oldManager = $sub->manager_id;
-                    // Mise à jour vers le nouveau manager
-                    $sub->update(['manager_id' => $newManagerId]);
+                if ($mode === 'transfer' && $newManagerId) {
+                    // 1. Vérifier si le remplaçant a déjà une affectation active sur cette campagne
+                    $newManagerAssignment = Assignment::where('employee_id', $newManagerId)
+                        ->where('campaign_id', $assignment->campaign_id)
+                        ->where('status', 'actif')
+                        ->first();
 
-                    // On enregistre le transfert dans l'historique pour chaque subordonné
-                    AssignmentHistory::create([
-                        'assignment_id' => $sub->id,
-                        'employee_id' => $sub->employee_id,
-                        'old_manager_id' => $oldManager,
-                        'new_manager_id' => $newManagerId,
-                        'old_campaign_id' => $sub->campaign_id,
-                        'new_campaign_id' => $sub->campaign_id,
-                        'action_type' => 'transfer',
-                        'changed_by' => Auth::id(),
-                        'reason' => "Transfert automatique suite au départ de son manager",
-                    ]);
+                    // 2. Si non, on lui crée une nouvelle affectation du même rang
+                    if (!$newManagerAssignment) {
+                        $newManagerAssignment = Assignment::create([
+                            'employee_id' => $newManagerId,
+                            'campaign_id' => $assignment->campaign_id,
+                            'position_id' => $assignment->position_id,
+                            'manager_id' => $assignment->manager_id, // Il hérite du manager du sortant
+                            'status' => AssignmentStatus::ACTIVE->value,
+                            'start_date' => now(),
+                        ]);
+
+                        // Trace de la nouvelle affectation du remplaçant
+                        $this->logHistory($newManagerAssignment, 'assign', $assignment->manager_id, $assignment->campaign_id, "Affectation automatique en tant que remplaçant");
+                    }
+
+                    // 3. Transférer tous les subordonnés au nouveau manager
+                    Assignment::where('manager_id', $assignment->employee_id)
+                        ->where('campaign_id', $assignment->campaign_id)
+                        ->where('status', 'actif')
+                        ->get()
+                        ->each(function ($sub) use ($newManagerId) {
+                            $oldManagerId = $sub->manager_id;
+                            $sub->update(['manager_id' => $newManagerId]);
+                            
+                            // Trace du transfert pour chaque subordonné
+                            $this->logHistory($sub, 'transfer', $newManagerId, $sub->campaign_id, "Transfert vers le nouveau responsable : " . Employee::find($newManagerId)->email);
+                        });
+                } elseif ($mode === 'cascade') {
+                    // Libérer récursivement tous les subordonnés
+                    Assignment::where('manager_id', $assignment->employee_id)
+                        ->where('campaign_id', $assignment->campaign_id)
+                        ->where('status', 'actif')
+                        ->get()
+                        ->each(function ($sub) {
+                            $this->internalRelease($sub, 'cascade', null, "Libération en cascade.");
+                        });
                 }
-            } 
-            
-            // CAS 2 : LIBÉRATION EN CASCADE (On libère aussi tout le monde en dessous)
-            elseif ($mode === 'cascade') {
-                $subordinates = Assignment::where('manager_id', $assignment->employee_id)
-                    ->where('campaign_id', $assignment->campaign_id)
-                    ->where('status', 'actif')
-                    ->get();
 
-                foreach ($subordinates as $sub) {
-                    // On marque chaque subordonné comme terminé (libéré)
-                    $sub->update([
-                        'status' => 'termine', 
-                        'end_date' => now()
-                    ]);
+                // Fermer l'affectation actuelle
+                $assignment->update([
+                    'status' => AssignmentStatus::COMPLETED->value,
+                    'end_date' => now()
+                ]);
 
-                    // Historique pour la libération de chaque subordonné
-                    AssignmentHistory::create([
-                        'assignment_id' => $sub->id,
-                        'employee_id' => $sub->employee_id,
-                        'old_manager_id' => $sub->manager_id,
-                        'old_campaign_id' => $sub->campaign_id,
-                        'action_type' => 'release',
-                        'changed_by' => Auth::id(),
-                        'reason' => "Libération en cascade suite au départ du responsable",
-                    ]);
+                $this->logHistory($assignment, 'release', $assignment->manager_id, $assignment->campaign_id, $reason);
+            });
+
+            return redirect()->back()->with('success', 'Affectation libérée avec succès.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Réaffectation (clôture + nouvelle pour un employé existant)
+     * Utile pour changer de manager tout en gardant l'historique
+     */
+    public function reassign(Request $request, Assignment $assignment)
+    {
+        $validated = $request->validate([
+            'new_manager_id' => 'required|exists:employees,id',
+            'start_date' => 'required|date',
+            'reason' => 'nullable|string',
+        ]);
+
+        try {
+            DB::transaction(function () use ($assignment, $validated) {
+                // 1. Libérer l'ancienne
+                $this->internalRelease($assignment, 'solo', null, "Réaffectation : " . ($validated['reason'] ?? ''));
+                
+                // 2. Créer la nouvelle selon le type
+                $code = $assignment->position->code;
+                if ($code === 'SUP') {
+                    $this->internalAssignSUP(
+                        $assignment->employee_id,
+                        $assignment->campaign_id,
+                        $validated['new_manager_id'],
+                        $validated['start_date'],
+                        $validated['reason']
+                    );
+                } elseif ($code === 'TC') {
+                    $this->internalAssignTC(
+                        $assignment->employee_id,
+                        $validated['new_manager_id'],
+                        $validated['start_date'],
+                        $validated['reason']
+                    );
                 }
-            }
+            });
 
-            // ENFIN : On libère la ressource principale (le CP ou SUP qu'on voulait retirer au départ)
-            $assignment->update([
-                'status' => 'termine', 
-                'end_date' => now()
-            ]);
+            return redirect()->back()->with('success', 'Ressource réaffectée.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
 
-            // Enregistrement final de la libération dans l'historique
-            AssignmentHistory::create([
-                'assignment_id' => $assignment->id,
-                'employee_id' => $assignment->employee_id,
-                'old_manager_id' => $assignment->manager_id,
-                'old_campaign_id' => $assignment->campaign_id,
-                'action_type' => 'release',
-                'changed_by' => Auth::id(),
-                'reason' => $request->reason ?? "Libération effectuée (Mode: $mode)",
-            ]);
-        });
+    /**
+     * Logique interne de libération (sans redirection)
+     */
+    private function internalRelease(Assignment $assignment, string $mode, ?int $newManagerId, ?string $reason): void
+    {
+        if ($mode === 'cascade') {
+            Assignment::where('manager_id', $assignment->employee_id)
+                ->where('campaign_id', $assignment->campaign_id)
+                ->where('status', 'actif')
+                ->get()
+                ->each(function ($sub) {
+                    $this->internalRelease($sub, 'cascade', null, "Libération en cascade.");
+                });
+        }
 
-        return redirect()->back();
+        $assignment->update([
+            'status' => AssignmentStatus::COMPLETED->value,
+            'end_date' => now()
+        ]);
+
+        $this->logHistory($assignment, 'release', $assignment->manager_id, $assignment->campaign_id, $reason);
+    }
+
+    /**
+     * Logique interne d'assignation SUP
+     */
+    private function internalAssignSUP($employeeId, $campaignId, $managerId, $startDate, $reason)
+    {
+        $position = Position::where('code', PositionCode::SUP->value)->firstOrFail();
+        $assignment = Assignment::create([
+            'employee_id' => $employeeId,
+            'campaign_id' => $campaignId,
+            'manager_id' => $managerId,
+            'position_id' => $position->id,
+            'status' => AssignmentStatus::ACTIVE->value,
+            'start_date' => $startDate,
+        ]);
+        $this->logHistory($assignment, 'assign', $managerId, $campaignId, $reason);
+    }
+
+    /**
+     * Logique interne d'assignation TC
+     */
+    private function internalAssignTC($employeeId, $managerId, $startDate, $reason)
+    {
+        $managerAssignment = Assignment::where('employee_id', $managerId)
+            ->where('status', 'actif')
+            ->firstOrFail();
+
+        $position = Position::where('code', PositionCode::TC->value)->firstOrFail();
+        $assignment = Assignment::create([
+            'employee_id' => $employeeId,
+            'campaign_id' => $managerAssignment->campaign_id,
+            'manager_id' => $managerId,
+            'position_id' => $position->id,
+            'status' => AssignmentStatus::ACTIVE->value,
+            'start_date' => $startDate,
+        ]);
+        $this->logHistory($assignment, 'assign', $managerId, $managerAssignment->campaign_id, $reason);
+    }
+
+    /**
+     * Enregistrer dans l'historique
+     */
+    private function logHistory(Assignment $assignment, string $action, ?int $newManagerId, int $newCampaignId, ?string $reason): void
+    {
+        AssignmentHistory::create([
+            'assignment_id' => $assignment->id,
+            'employee_id' => $assignment->employee_id,
+            'new_manager_id' => $newManagerId,
+            'new_campaign_id' => $newCampaignId,
+            'action_type' => $action,
+            'changed_by' => Auth::id(),
+            'reason' => $reason,
+        ]);
     }
 }

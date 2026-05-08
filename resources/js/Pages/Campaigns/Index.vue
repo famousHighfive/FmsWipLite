@@ -1,103 +1,116 @@
 <script setup>
-// Importation des composants PrimeVue
+import { ref, watch } from 'vue';
+import { router, Link, usePage } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
 import Button from 'primevue/button';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import Tag from 'primevue/tag';
+import SelectButton from 'primevue/selectbutton';
 import Dialog from 'primevue/dialog';
 import Textarea from 'primevue/textarea';
 import Menu from 'primevue/menu';
-import SelectButton from 'primevue/selectbutton';
 import { useToast } from 'primevue/usetoast';
-import { ref, computed } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
-import AppLayout from '@/Layouts/AppLayout.vue';
 
-// Props reçues du contrôleur Laravel
+// Props
 const props = defineProps({
-    campaigns: Array, // Liste des campagnes avec assignment_count
+    campaigns: Object, // Paginated object
+    filters: Object,
 });
 
 const toast = useToast();
-const dt = ref();
 
-// États pour les modaux
+// Local states
+const search = ref(props.filters.search || '');
+const statusFilter = ref(props.filters.status || 'Tous');
+const statusOptions = ['Tous', 'Active', 'Inactive', 'Terminee'];
+
 const campaignDialog = ref(false);
 const deleteDialog = ref(false);
 const selectedCampaign = ref(null);
-const campaign = ref({ status: 'active' });
-const submitted = ref(false);
+const form = ref({
+    name: '',
+    description: '',
+    start_date: '',
+    end_date: '',
+});
 
-// Menu contextuel
 const menu = ref();
 const menuItems = ref([]);
 
-// Filtres
-const searchQuery = ref('');
-const statusFilter = ref('Tous');
-const statusOptions = ref(['Tous', 'Active', 'Inactive', 'Terminée']);
-
-/**
- * Filtrage des campagnes selon la recherche et le statut
- */
-const filteredCampaigns = computed(() => {
-    return props.campaigns.filter(c => {
-        const matchesSearch = c.name.toLowerCase().includes(searchQuery.value.toLowerCase());
-        const matchesStatus = statusFilter.value === 'Tous' || c.status.toLowerCase() === statusFilter.value.toLowerCase();
-        return matchesSearch && matchesStatus;
+// Watchers for filtering
+watch([search, statusFilter], () => {
+    router.get(route('campaigns.index'), {
+        search: search.value,
+        status: statusFilter.value
+    }, {
+        preserveState: true,
+        replace: true
     });
 });
 
 /**
- * Gestion du menu contextuel par ligne
+ * Open context menu
  */
 const toggleMenu = (event, data) => {
     selectedCampaign.value = data;
     menuItems.value = [
-        { label: 'Voir le détail', icon: 'pi pi-eye', command: () => router.get(`/campaigns/${data.id}`) },
-        { label: 'Modifier', icon: 'pi pi-pencil', command: () => editCampaign(data) },
+        { label: 'Voir le détail', icon: 'pi pi-eye', command: () => router.get(route('campaigns.show', data.id)) },
+        { label: 'Modifier', icon: 'pi pi-pencil', disabled: data.status === 'terminee', command: () => editCampaign(data) },
         { separator: true },
-        { label: 'Supprimer', icon: 'pi pi-trash', class: 'text-red-500', command: () => confirmDelete(data) }
+        { 
+            label: data.status === 'active' ? 'Désactiver' : 'Activer', 
+            icon: data.status === 'active' ? 'pi pi-power-off' : 'pi pi-check-circle',
+            disabled: data.status === 'terminee',
+            command: () => toggleStatus(data)
+        },
+        { 
+            label: 'Clôturer', 
+            icon: 'pi pi-times-circle', 
+            disabled: data.status === 'terminee',
+            command: () => completeCampaign(data) 
+        },
+        { 
+            label: 'Supprimer', 
+            icon: 'pi pi-trash', 
+            class: 'text-red-500', 
+            disabled: data.status === 'active',
+            command: () => confirmDelete(data) 
+        }
     ];
     menu.value.toggle(event);
 };
 
-// Fonctions CRUD basiques
 const openNew = () => {
-    campaign.value = { status: 'active' };
-    submitted.value = false;
+    form.value = { name: '', description: '', start_date: '', end_date: '' };
     campaignDialog.value = true;
 };
 
 const editCampaign = (data) => {
-    // Formatage des dates pour l'input date
-    const formatted = { ...data };
-    if (data.start_date) {
-        const p = data.start_date.split('/');
-        if (p.length === 3) formatted.start_date = `${p[2]}-${p[1]}-${p[0]}`;
-    }
-    if (data.end_date) {
-        const p = data.end_date.split('/');
-        if (p.length === 3) formatted.end_date = `${p[2]}-${p[1]}-${p[0]}`;
-    }
-    campaign.value = formatted;
+    form.value = { ...data };
+    // Format dates for input
+    if (data.start_date) form.value.start_date = formatDateForInput(data.start_date);
+    if (data.end_date) form.value.end_date = formatDateForInput(data.end_date);
     campaignDialog.value = true;
 };
 
-const saveCampaign = () => {
-    submitted.value = true;
-    if (!campaign.value.name) return;
+const formatDateForInput = (dateStr) => {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return dateStr;
+};
 
-    if (campaign.value.id) {
-        router.put(`/campaigns/${campaign.value.id}`, campaign.value, {
+const saveCampaign = () => {
+    if (form.value.id) {
+        router.put(route('campaigns.update', form.value.id), form.value, {
             onSuccess: () => {
                 toast.add({ severity: 'success', summary: 'Succès', detail: 'Campagne mise à jour', life: 3000 });
                 campaignDialog.value = false;
             }
         });
     } else {
-        router.post('/campaigns', campaign.value, {
+        router.post(route('campaigns.store'), form.value, {
             onSuccess: () => {
                 toast.add({ severity: 'success', summary: 'Succès', detail: 'Campagne créée', life: 3000 });
                 campaignDialog.value = false;
@@ -106,64 +119,86 @@ const saveCampaign = () => {
     }
 };
 
+const toggleStatus = (data) => {
+    const action = data.status === 'active' ? 'deactivate' : 'activate';
+    router.patch(route(`campaigns.${action}`, data.id), {}, {
+        onSuccess: () => toast.add({ severity: 'success', summary: 'Succès', detail: 'Statut mis à jour', life: 3000 })
+    });
+};
+
+const completeCampaign = (data) => {
+    router.patch(route('campaigns.complete', data.id), {}, {
+        onSuccess: () => toast.add({ severity: 'success', summary: 'Succès', detail: 'Campagne clôturée', life: 3000 })
+    });
+};
+
 const confirmDelete = (data) => {
     selectedCampaign.value = data;
     deleteDialog.value = true;
 };
 
 const deleteCampaign = () => {
-    router.delete(`/campaigns/${selectedCampaign.value.id}`, {
+    router.delete(route('campaigns.destroy', selectedCampaign.value.id), {
         onSuccess: () => {
-            toast.add({ severity: 'success', summary: 'Succès', detail: 'Supprimé', life: 3000 });
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Campagne supprimée', life: 3000 });
             deleteDialog.value = false;
         }
     });
 };
 
 const getStatusSeverity = (status) => {
-    switch (status.toLowerCase()) {
+    switch (status) {
         case 'active': return 'success';
         case 'inactive': return 'warn';
         case 'terminee': return 'secondary';
         default: return 'info';
     }
 };
+
+const onPage = (event) => {
+    router.get(route('campaigns.index'), {
+        page: event.page + 1,
+        search: search.value,
+        status: statusFilter.value
+    }, { preserveState: true });
+};
 </script>
 
 <template>
     <AppLayout>
         <div class="p-6 bg-slate-50 min-h-screen">
-            <!-- HEADER (Image 3) -->
-            <div class="flex justify-between items-center mb-6">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
                 <div>
                     <h1 class="text-3xl font-bold text-slate-900">Campagnes</h1>
-                    <p class="text-slate-500">{{ props.campaigns.length }} campagnes au total</p>
+                    <p class="text-slate-500">{{ props.campaigns.total }} campagnes enregistrées</p>
                 </div>
-                <Button label="Nouvelle campagne" icon="pi pi-plus" class="rounded-lg px-4 py-2" @click="openNew" />
+                <Button label="Nouvelle campagne" icon="pi pi-plus" class="rounded-xl px-4 py-2 bg-blue-600 border-none shadow-lg shadow-blue-200" @click="openNew" />
             </div>
 
-            <!-- FILTRES (Image 3) -->
-            <div class="flex flex-wrap gap-4 items-center mb-6">
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 flex flex-wrap gap-4 items-center">
                 <div class="p-input-icon-left flex-1 min-w-[300px]">
-                    <InputText v-model="searchQuery" placeholder="Rechercher une campagne..." class="w-full pl-10 rounded-xl border-slate-200" />
+                    <i class="pi pi-search ml-3 text-slate-400" />
+                    <InputText v-model="search" placeholder="Rechercher une campagne..." class="w-full pl-10 rounded-xl border-slate-200" />
                 </div>
                 <SelectButton v-model="statusFilter" :options="statusOptions" class="custom-select-button" />
             </div>
 
-            <!-- TABLEAU (Image 3) -->
+            <!-- Table -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <DataTable :value="filteredCampaigns" class="p-datatable-custom" responsiveLayout="stack">
+                <DataTable :value="props.campaigns.data" class="p-datatable-custom" responsiveLayout="stack">
                     <Column field="name" header="Nom" sortable>
-                        <template #body="slotProps">
-                            <Link :href="`/campaigns/${slotProps.data.id}`" class="font-bold text-slate-900 hover:text-blue-600 transition-colors">
-                                {{ slotProps.data.name }}
+                        <template #body="{ data }">
+                            <Link :href="route('campaigns.show', data.id)" class="font-bold text-slate-900 hover:text-blue-600 transition-colors">
+                                {{ data.name }}
                             </Link>
                         </template>
                     </Column>
                     
                     <Column field="description" header="Description">
-                        <template #body="slotProps">
-                            <span class="text-slate-500 truncate block max-w-xs">{{ slotProps.data.description }}</span>
+                        <template #body="{ data }">
+                            <span class="text-slate-500 truncate block max-w-xs">{{ data.description }}</span>
                         </template>
                     </Column>
 
@@ -171,74 +206,89 @@ const getStatusSeverity = (status) => {
                     <Column field="end_date" header="Fin" sortable />
 
                     <Column header="Statut">
-                        <template #body="slotProps">
-                            <Tag :value="slotProps.data.status" :severity="getStatusSeverity(slotProps.data.status)" rounded />
+                        <template #body="{ data }">
+                            <Tag :value="data.status" :severity="getStatusSeverity(data.status)" rounded class="px-3" />
                         </template>
                     </Column>
 
                     <Column header="Affectations">
-                        <template #body="slotProps">
+                        <template #body="{ data }">
                             <div class="flex items-center gap-2 text-slate-600">
                                 <i class="pi pi-users text-sm" />
-                                <span>{{ slotProps.data.assignments_count || 0 }}</span>
+                                <span>{{ data.assignments_count || 0 }}</span>
                             </div>
                         </template>
                     </Column>
 
                     <Column header="Actions" class="w-20">
-                        <template #body="slotProps">
-                            <Button icon="pi pi-ellipsis-v" severity="secondary" text rounded @click="toggleMenu($event, slotProps.data)" />
+                        <template #body="{ data }">
+                            <Button icon="pi pi-ellipsis-v" severity="secondary" text rounded @click="toggleMenu($event, data)" />
                         </template>
                     </Column>
+                    
+                    <template #empty>
+                        <div class="text-center py-12">
+                            <i class="pi pi-folder-open text-4xl text-slate-200 mb-3" />
+                            <p class="text-slate-400">Aucune campagne trouvée.</p>
+                        </div>
+                    </template>
                 </DataTable>
-                <Menu ref="menu" :model="menuItems" :popup="true" />
+                
+                <!-- Pagination -->
+                <div class="p-4 border-t border-slate-100">
+                    <DataTable :value="[]" :lazy="true" :paginator="true" :rows="10" :totalRecords="props.campaigns.total" 
+                               :first="(props.campaigns.current_page - 1) * 10" @page="onPage" />
+                </div>
             </div>
 
+            <Menu ref="menu" :model="menuItems" :popup="true" />
+
             <!-- MODAL CRÉATION/EDITION -->
-            <Dialog v-model:visible="campaignDialog" :header="campaign.id ? 'Modifier la campagne' : 'Nouvelle campagne'" modal class="p-fluid rounded-2xl" :style="{width: '500px'}">
+            <Dialog v-model:visible="campaignDialog" :header="form.id ? 'Modifier la campagne' : 'Nouvelle campagne'" modal class="p-fluid rounded-2xl" :style="{width: '500px'}">
                 <div class="flex flex-col gap-4 mt-2">
                     <div>
                         <label class="font-semibold block mb-1">Nom de la campagne *</label>
-                        <InputText v-model="campaign.name" placeholder="Ex: Satisfaction Client Q1" :class="{'p-invalid': submitted && !campaign.name}" />
+                        <InputText v-model="form.name" placeholder="Ex: Satisfaction Client Q1" />
                     </div>
                     <div>
                         <label class="font-semibold block mb-1">Description</label>
-                        <Textarea v-model="campaign.description" rows="3" placeholder="Objectifs et détails..." />
+                        <Textarea v-model="form.description" rows="3" placeholder="Objectifs et détails..." />
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="font-semibold block mb-1">Date début *</label>
-                            <InputText type="date" v-model="campaign.start_date" />
+                            <InputText type="date" v-model="form.start_date" />
                         </div>
                         <div>
                             <label class="font-semibold block mb-1">Date fin</label>
-                            <InputText type="date" v-model="campaign.end_date" />
+                            <InputText type="date" v-model="form.end_date" />
                         </div>
                     </div>
+                    <!-- Choix du statut dans le formulaire (Image 3 révisée) -->
                     <div>
-                        <label class="font-semibold block mb-2">Statut</label>
+                        <label class="font-semibold block mb-2">Statut de la campagne</label>
                         <div class="flex gap-2">
-                            <Button label="Active" :outlined="campaign.status !== 'active'" rounded @click="campaign.status = 'active'" severity="success" size="small" />
-                            <Button label="Inactive" :outlined="campaign.status !== 'inactive'" rounded @click="campaign.status = 'inactive'" severity="warn" size="small" />
-                            <Button label="Terminée" :outlined="campaign.status !== 'terminee'" rounded @click="campaign.status = 'terminee'" severity="secondary" size="small" />
+                            <Button label="Inactive" :outlined="form.status !== 'inactive' && form.status !== undefined" rounded @click="form.status = 'inactive'" severity="warn" size="small" />
+                            <Button label="Active" :outlined="form.status !== 'active'" rounded @click="form.status = 'active'" severity="success" size="small" />
+                            <Button label="Terminée" :outlined="form.status !== 'terminee'" rounded @click="form.status = 'terminee'" severity="secondary" size="small" />
                         </div>
+                        <small class="text-slate-400 mt-1 block">Sélectionnez le statut initial de la campagne.</small>
                     </div>
                 </div>
                 <template #footer>
                     <Button label="Annuler" severity="secondary" text @click="campaignDialog = false" />
-                    <Button label="Enregistrer" icon="pi pi-check" @click="saveCampaign" class="px-4" />
+                    <Button label="Enregistrer" icon="pi pi-check" @click="saveCampaign" class="bg-blue-600 border-none rounded-xl" />
                 </template>
             </Dialog>
 
-            <!-- MODAL SUPPRESSION -->
             <Dialog v-model:visible="deleteDialog" header="Confirmation" modal :style="{width: '400px'}">
                 <div class="flex items-center gap-3">
                     <i class="pi pi-exclamation-triangle text-red-500 text-3xl" />
-                    <span>Voulez-vous supprimer <b>{{ selectedCampaign?.name }}</b> ?</span>
+                    <span>Voulez-vous supprimer <b>{{ selectedCampaign?.name }}</b> ? Cette action est irréversible.</span>
                 </div>
                 <template #footer>
                     <Button label="Non" severity="secondary" text @click="deleteDialog = false" />
-                    <Button label="Oui, supprimer" severity="danger" @click="deleteCampaign" />
+                    <Button label="Oui, supprimer" severity="danger" @click="deleteCampaign" class="bg-red-600 border-none rounded-xl" />
                 </template>
             </Dialog>
         </div>
