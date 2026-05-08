@@ -133,36 +133,105 @@ class CampaignController extends Controller
     /**
      * Changer uniquement le statut d'une campagne
      */
-    public function changeStatus(Request $request, Campaign $campaign)
-    {
-        // On ne réagit pas si la campagne est déjà terminée
-        if ($campaign->status === 'terminee') {
-            return redirect()->back()->with('error', 'Impossible de modifier le statut d\'une campagne terminée.');
-        }
+    // public function changeStatus(Request $request, Campaign $campaign)
+    // {
+    //     // On ne réagit pas si la campagne est déjà terminée
+    //     if ($campaign->status === 'terminee') {
+    //         return redirect()->back()->with('error', 'Impossible de modifier le statut d\'une campagne terminée.');
+    //     }
 
-        // Validation du nouveau statut
-        $validated = $request->validate([
-            'status' => 'required|in:active,inactive', // Uniquement actif/inactif via ce bouton
+    //     // Validation du nouveau statut
+    //     $validated = $request->validate([
+    //         'status' => 'required|in:active,inactive', // Uniquement actif/inactif via ce bouton
+    //     ]);
+
+    //     // Sauvegarde de l'ancien statut pour la description
+    //     $oldStatus = $campaign->status;
+        
+    //     // Mise à jour du statut
+    //     $campaign->update(['status' => $validated['status']]);
+
+    //     // Tracé spécifique pour le changement de statut (Historique)
+    //     ActivityLog::create([
+    //         'user_id' => Auth::id(),
+    //         'action' => 'status_change',
+    //         'model_type' => Campaign::class,
+    //         'model_id' => $campaign->id,
+    //         'description' => "Changement de statut de la campagne {$campaign->name} : {$oldStatus} -> {$validated['status']}",
+    //         'ip_address' => $request->ip(),
+    //     ]);
+
+    //     return redirect()->back();
+    // }
+
+    public function changeStatus(Request $request, Campaign $campaign)
+{
+    $validated = $request->validate([
+        'status' => 'required|in:active,inactive,terminee',
+    ]);
+
+    $oldStatus = $campaign->status;
+    $newStatus = $validated['status'];
+
+    \Illuminate\Support\Facades\DB::transaction(function () use (
+        $campaign,
+        $oldStatus,
+        $newStatus,
+        $request
+    ) {
+
+        // Mise à jour du statut
+        $campaign->update([
+            'status' => $newStatus
         ]);
 
-        // Sauvegarde de l'ancien statut pour la description
-        $oldStatus = $campaign->status;
-        
-        // Mise à jour du statut
-        $campaign->update(['status' => $validated['status']]);
+        /**
+         * UNIQUEMENT lorsqu'on passe à "terminee"
+         * on libère les ressources
+         */
+        if ($newStatus === 'terminee' && $oldStatus !== 'terminee') {
 
-        // Tracé spécifique pour le changement de statut (Historique)
+            $activeAssignments = \App\Models\Assignment::where('campaign_id', $campaign->id)
+                ->where('status', 'actif')
+                ->get();
+
+            foreach ($activeAssignments as $assignment) {
+
+                // Clôture de l'affectation
+                $assignment->update([
+                    'status' => 'termine',
+                    'end_date' => now(),
+                ]);
+
+                // Historique
+                \App\Models\AssignmentHistory::create([
+                    'assignment_id' => $assignment->id,
+                    'employee_id' => $assignment->employee_id,
+                    'old_manager_id' => $assignment->manager_id,
+                    'old_campaign_id' => $assignment->campaign_id,
+                    'action_type' => 'release',
+                    'changed_by' => Auth::id(),
+                    'reason' => "Libération automatique suite à la clôture de la campagne : {$campaign->name}",
+                ]);
+            }
+        }
+
+        // Historique global
         ActivityLog::create([
             'user_id' => Auth::id(),
             'action' => 'status_change',
             'model_type' => Campaign::class,
             'model_id' => $campaign->id,
-            'description' => "Changement de statut de la campagne {$campaign->name} : {$oldStatus} -> {$validated['status']}",
+            'description' => "Changement de statut de {$oldStatus} vers {$newStatus} pour la campagne {$campaign->name}",
             'ip_address' => $request->ip(),
         ]);
+    });
 
-        return redirect()->back();
-    }
+    return redirect()->back()->with(
+        'success',
+        'Statut mis à jour avec succès.'
+    );
+}
 
     /**
      * Supprimer une campagne (En réalité, on la clôture/termine et libère toutes les ressources)

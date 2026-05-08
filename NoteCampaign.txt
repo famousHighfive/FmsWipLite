@@ -8,3 +8,9 @@ campaigns.edit (Formulaire d'édition)
 campaigns.update (Modification)
 campaigns.destroy (Suppression)
 📍 Note : C'est pour cela que votre route spécifique ->name('campaigns.status') est bien nommée, car elle suit la convention "pluriel.action".
+
+Requette pour trouver le role id d'un employé
+SELECT users.role
+FROM users
+JOIN employees ON users.id = employees.user_id
+WHERE employees.user_id = 4;

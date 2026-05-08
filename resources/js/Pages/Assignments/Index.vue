@@ -19,7 +19,7 @@ const props = defineProps({
     campaigns: Array,   // Liste des campagnes actives
     positions: Array    // Liste des postes (CP, SUP, TC)
 });
-
+console.log(props.employees);
 // Variables d'état pour la gestion des modaux (dialogues)
 const toast = useToast();
 const assignmentDialog = ref(false); // Modal de nouvelle affectation

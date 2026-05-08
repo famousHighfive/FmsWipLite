@@ -27,7 +27,7 @@ const dt = ref();
 const campaignDialog = ref(false);
 const deleteDialog = ref(false);
 const selectedCampaign = ref(null);
-const campaign = ref({ status: 'active' });
+const campaign = ref({ status: 'inactive' });
 const submitted = ref(false);
 
 // Menu contextuel
@@ -78,14 +78,14 @@ const toggleMenu = (event, data) => {
         });
     }
 
-    // Bouton de clôture (anciennement supprimer)
+    // Bouton de clôture (si non terminée)
     items.push({ separator: true });
     if (data.status !== 'terminee') {
         items.push({ 
             label: 'Clôturer', 
             icon: 'pi pi-times-circle', 
             class: 'text-red-500', 
-            command: () => confirmDelete(data) 
+            command: () => confirmClose(data) 
         });
     }
 
@@ -120,9 +120,9 @@ const onRowClick = (event) => {
     router.get(`/campaigns/${event.data.id}`);
 };
 
-// Fonctions CRUD basiques
+// Fonctions CRUD 
 const openNew = () => {
-    campaign.value = { status: 'active' };
+    campaign.value = { status: 'inactive' };
     submitted.value = false;
     campaignDialog.value = true;
 };
@@ -163,7 +163,7 @@ const saveCampaign = () => {
     }
 };
 
-const confirmDelete = (data) => {
+const confirmClose = (data) => {
     selectedCampaign.value = data;
     deleteDialog.value = true;
 };
