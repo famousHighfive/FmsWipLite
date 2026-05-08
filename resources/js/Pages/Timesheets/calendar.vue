@@ -104,21 +104,20 @@ const openBulkEdit = () => {
 
 // --- CALCUL DES TOTALS ---
 const getTotalsData = (timesheet) => {
-  if (!timesheet.entries) return { worked: 0, planned: 0 };
-  const uniqueEntries = {};
-  timesheet.entries.forEach(entry => {
-    const dateKey = entry.date.split('T')[0];
-    uniqueEntries[dateKey] = { 
-        worked: parseFloat(entry.total_hours || 0), 
-        planned: parseFloat(entry.planned_hours || 0) 
-    };
-  });
-  return Object.values(uniqueEntries).reduce((acc, curr) => {
-    acc.worked += curr.worked;
-    acc.planned += curr.planned;
-    return acc;
-  }, { worked: 0, planned: 0 });
+    if (!timesheet?.entries?.length) return { worked: 0, planned: 0 };
+
+    return timesheet.entries.reduce((acc, entry) => {
+        // parseFloat sécurisé avec repli à 0
+        const worked = parseFloat(entry.total_hours) || 0;
+        const planned = parseFloat(entry.planned_hours) || 0;
+        
+        return {
+            worked: acc.worked + worked,
+            planned: acc.planned + planned
+        };
+    }, { worked: 0, planned: 0 });
 };
+
 </script>
 <template>
   <Head title="Calendrier de Pointage" />
