@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreTimesheetEntryRequest;
 use App\Http\Requests\UpdateTimesheetEntryRequest;
 use App\Models\Employee;
+use App\Models\Timesheet;
 use App\Models\TimesheetEntry;
+use Carbon\Carbon;
 use Inertia\Inertia;
 
 class TimesheetEntryController extends Controller
@@ -35,45 +37,53 @@ class TimesheetEntryController extends Controller
 public function store(StoreTimesheetEntryRequest $request)
 {
     $validated = $request->validated();
-    $timesheet = \App\Models\Timesheet::findOrFail($validated['timesheet_id']);
 
-    // --- RÈGLE DE STATUT ---
-    // Si déjà soumis, personne ne peut modifier (même pas le SUP)
-    if ($timesheet->status === 'soumis') {
-        return back()->withErrors(['message' => 'Cette feuille est soumise, modification impossible.']);
+    // On récupère soit les IDs de la sélection multiple, soit l'ID unique du Request
+    // Note : Pour la sélection multiple, ton frontend doit envoyer 'timesheet_ids'
+    $timesheetIds = $request->input('timesheet_ids', [$validated['timesheet_id']]);
+
+    if (empty($timesheetIds)) {
+        return back()->withErrors(['message' => 'Aucune feuille de temps sélectionnée.']);
     }
 
-    // --- RÈGLE DE RÔLE (Exemple) ---
-    // On vérifie que l'utilisateur connecté n'est pas un TC (car le TC ne peut pas ajouter/modifier)
-    if (auth()->user()->role->name === 'tc') {
-        abort(403, 'Action non autorisée pour votre profil.');
-    }
+    foreach ($timesheetIds as $tsId) {
+        $timesheet = Timesheet::findOrFail($tsId);
 
-    // ... calcul totalHours ...
-    $start = \Carbon\Carbon::createFromFormat('H:i', $validated['check_in']);
-    $end = \Carbon\Carbon::createFromFormat('H:i', $validated['check_out']);
-    $totalHours = max(0, ($start->diffInMinutes($end) - ($validated['break_duration'] ?? 0)) / 60);
+        // Sécurité : Ne pas modifier si déjà soumis
+        if ($timesheet->status === 'soumis') continue;
 
-    $entry = TimesheetEntry::updateOrCreate(
-        ['timesheet_id' => $validated['timesheet_id'], 'date' => $validated['date']],
-        [
-            'check_in' => $validated['check_in'],
-            'check_out' => $validated['check_out'],
-            'break_duration' => $validated['break_duration'] ?? 0,
-            'total_hours' => $totalHours,
-            'planned_hours' => 7.0, // À dynamiser via planning_models
-            'overtime_hours' => $totalHours - 7.0,
-            'comment' => $validated['comment']
-        ]
-    );
+        // Calcul totalHours
+        $totalHours = 0;
+        if ($validated['check_in'] && $validated['check_out']) {
+            $start = Carbon::parse($validated['check_in']);
+            $end = Carbon::parse($validated['check_out']);
+            $totalHours = max(0, ($start->diffInMinutes($end) - ($validated['break_duration'] ?? 0)) / 60);
+        }
 
-    // Si on enregistre, le statut passe à 'valide' (étape avant 'soumis')
-    if ($timesheet->status === 'brouillon') {
-        $timesheet->update(['status' => 'valide']);
+        // CRUD
+        TimesheetEntry::updateOrCreate(
+            ['timesheet_id' => $tsId, 'date' => $validated['date']],
+            [
+                'check_in'       => $validated['check_in'],
+                'check_out'      => $validated['check_out'],
+                'break_duration' => $validated['break_duration'] ?? 0,
+                'total_hours'    => $totalHours,
+                'planned_hours'  => 7.0, // À dynamiser plus tard
+                'overtime_hours' => $totalHours - 7.0,
+                'comment'        => $validated['comment']
+            ]
+        );
+
+        // Passage en valide si c'était en brouillon
+        if ($timesheet->status === 'brouillon') {
+            $timesheet->update(['status' => 'valide']);
+        }
     }
 
     return back();
 }
+
+
 
 
 
@@ -114,8 +124,15 @@ public function store(StoreTimesheetEntryRequest $request)
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(TimesheetEntry $timesheetEntry)
-    {
-        //
+ public function destroy(TimesheetEntry $entry)
+{
+    $timesheet = $entry->timesheet;
+    
+    if ($timesheet->status !== 'soumis') {
+        $entry->delete();
     }
+
+    return back();
+}
+
 }

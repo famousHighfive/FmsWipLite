@@ -16,6 +16,7 @@ use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\CampaignController;
 // use App\Http\Controllers\TimesheetController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\TimesheetController as ControllersTimesheetController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -117,9 +118,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile/password', [ProfileController::class, 'edit'])->name('profile.password');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::get('/calendar', [TimesheetController::class, 'index'])->name('calendar.index');
     // Route pour enregistrer ou mettre à jour une entrée de temps
-
+    
     Route::resource('/employees', EmployeeController::class);
     Route::prefix('employees')->name('employees.')->group(function () {
         Route::get('/assigned', [EmployeeController::class, 'index'])->name('assigned');
@@ -133,19 +133,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/closed', [CampaignController::class, 'index'])->name('closed');
         Route::get('/details', [CampaignController::class, 'index'])->name('details');
     });
-
-    Route::prefix('timesheets')->name('timesheets.')->group(function () {
-        Route::get('/entry', [TimesheetController::class, 'entry'])->name('entry');
-        Route::get('/validate', [TimesheetController::class, 'validation'])->name('validate');
-        Route::get('/history', [TimesheetController::class, 'history'])->name('history');
-        Route::get('/gaps', [TimesheetController::class, 'gaps'])->name('gaps');
-        Route::get('/overtime', [TimesheetController::class, 'overtime'])->name('overtime');
-        Route::get('/', [TimesheetController::class, 'index'])->name('index');
-        Route::post('/', [TimesheetController::class, 'store'])->name('store');
-        Route::get('/{timesheet}', [TimesheetController::class, 'show'])->name('show');
-        Route::post('/{timesheet}/approve', [TimesheetController::class, 'approve'])->name('approve');
-        Route::post('/{timesheet}/reject', [TimesheetController::class, 'reject'])->name('reject');
-    });
+    
+    Route::get('/timesheets', [TimesheetController::class, 'index'])->name('calendar.index');
+    // Route::prefix('timesheets')->name('timesheets.')->group(function () {
+    //     Route::get('/entry', [TimesheetController::class, 'entry'])->name('entry');
+    //     Route::get('/validate', [TimesheetController::class, 'validation'])->name('validate');
+    //     Route::get('/history', [TimesheetController::class, 'history'])->name('history');
+    //     Route::get('/gaps', [TimesheetController::class, 'gaps'])->name('gaps');
+    //     Route::get('/overtime', [TimesheetController::class, 'overtime'])->name('overtime');
+    //     Route::get('/', [TimesheetController::class, 'index'])->name('index');
+    //     Route::post('/', [TimesheetController::class, 'store'])->name('store');
+    //     Route::get('/{timesheet}', [TimesheetController::class, 'show'])->name('show');
+    //     Route::post('/{timesheet}/approve', [TimesheetController::class, 'approve'])->name('approve');
+    //     Route::post('/{timesheet}/reject', [TimesheetController::class, 'reject'])->name('reject');
+    // });
 
     Route::resource('/notifications', NotificationController::class);
 
@@ -155,6 +156,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('/positions', PositionController::class)->only(['index', 'show']);
     Route::get('/employees/{employee}/history', [EmployeeController::class, 'history'])->name('employees.history');
+    Route::post('/timesheet-entries', [TimesheetEntryController::class, 'store'])->name('timesheet-entries.store');
+
     Route::middleware(['role:admin'])->group(function () {
 
         // USERS

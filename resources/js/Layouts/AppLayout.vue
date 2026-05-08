@@ -143,7 +143,7 @@ watch(() => page.url, findActiveMenu);
 
       timesheets: [
 
-        { label: 'Saisie des heures',      href: '/timesheets/entry' },
+        { label: 'Saisie des heures',      href: '/timesheets' },
 
         { label: 'Validation des heures',  href: '/timesheets/validate' },
 
@@ -278,7 +278,7 @@ watch(() => page.url, findActiveMenu);
 
       timesheets: [
 
-        { label: 'Saisie des heures superviseurs', href: '/timesheets/entry' },
+        { label: 'Saisie des heures superviseurs', href: '/timesheets' },
 
         { label: 'Validation des heures',          href: '/timesheets/validate' },
 
@@ -359,7 +359,7 @@ watch(() => page.url, findActiveMenu);
 
       timesheets: [
 
-        { label: 'Saisie des heures TC',  href: '/timesheets/entry' },
+        { label: 'Saisie des heures TC',  href: '/timesheets' },
 
         { label: 'Historique des heures', href: '/timesheets/history' },
 
