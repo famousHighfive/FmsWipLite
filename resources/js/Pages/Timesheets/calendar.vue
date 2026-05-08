@@ -19,7 +19,7 @@ const rows = ref(5); // Limitation à 5 lignes par page
 
 // --- GESTION DES RÔLES ---
 const user = computed(() => usePage().props.auth.user);
-const role = computed(() => user.value?.role?.name || 'TC');
+const role = computed(() => usePage().props.auth.user.role.name);
 
 // --- CALCUL DYNAMIQUE DE LA PÉRIODE ---
 const periodDates = computed(() => {
@@ -81,6 +81,7 @@ const openTimeCard = (timesheet, date) => {
     status: timesheet.status,
     role: role.value,
     employee_name: `${timesheet.employee.first_name} ${timesheet.employee.last_name}`,
+     status: timesheet.status,
     date: date,
     entry: timesheet.entries.find(e => e.date.startsWith(date)) || null
   };
@@ -185,23 +186,24 @@ const openBulkEdit = () => {
         </template>
       </Column>
 
-      <!-- Colonne Action (Chef de Plateau uniquement) -->
-      <Column header="Action" class="text-center" style="min-width: 70px">
-        <template #body="{ data }">
-          <div class="flex justify-center">
-            <button v-if="role === 'CP' && data.status !== 'soumis'" @click="openConfirm(data)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-all hover:scale-110">
-                <svg xmlns="http://w3.org" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-            </button>
-            <div v-if="data.status === 'soumis'" class="text-emerald-500 p-2">
-                <svg xmlns="http://w3.org" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-            </div>
-          </div>
-        </template>
-      </Column>
+  <!-- COLONNE ACTION -->
+  <Column header="Action" class="text-center" style="min-width: 80px">
+    <template #body="{ data }">
+        <!-- SEUL LE CP voit le bouton de validation finale (Soumission) -->
+        <button v-if="role === 'cp' && data.status !== 'soumis'" 
+                @click="openConfirm(data)" 
+                class="p-2 text-blue-600 hover:bg-blue-50 rounded-full">
+            <svg xmlns="http://w3.org" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+        </button>
+
+        <!-- ICONE CADENAS : Apparaît quand le CP a validé (bloque tout le monde) -->
+        <div v-if="data.status === 'soumis'" class="text-emerald-500">
+            <i class="pi pi-lock text-xl" title="Validé par le CP - Verrouillé"></i>
+        </div>
+    </template>
+  </Column>
     </DataTable>
   </div>
 

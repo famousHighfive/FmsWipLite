@@ -16,39 +16,35 @@ class TimesheetController extends Controller
     /**
      * Affiche la liste des feuilles de temps (Calendrier).
      */
-    public function index()
+ public function index()
 {
-    $user = auth()->user();
-    $employee = $user->employee;
-    $role = $user->role->name; // 'SUP' ou 'CP' ou 'TC'
+    $employee = auth()->user()->employee;
+    $role = auth()->user()->role->name; // 'tc', 'sup', 'cp'
 
     $query = Timesheet::with(['employee', 'validator', 'entries']);
 
-    if ($role === 'SUP') {
-        // Le SUP ne voit que les TC qui lui sont assignés dans la table assignments
+    if ($role === 'sup') {
+        // Le SUP ne voit QUE les TC qui lui sont assignés
         $query->whereHas('employee.assignments', function ($q) use ($employee) {
-            $q->where('manager_id', $employee->id)
-              ->where('status', 'actif');
+            $q->where('manager_id', $employee->id)->where('status', 'actif');
         });
     } 
-    elseif ($role === 'CP') {
-        // Le CP voit les SUP (et TC) qui lui sont assignés
+    elseif ($role === 'cp') {
+        // Le CP ne voit QUE les SUP qui lui sont assignés
         $query->whereHas('employee.assignments', function ($q) use ($employee) {
-            $q->where('manager_id', $employee->id)
-              ->where('status', 'actif');
+            $q->where('manager_id', $employee->id)->where('status', 'actif');
         });
     } 
-    elseif ($role === 'TC') {
-        // Le TC ne voit que sa propre ligne
+    else {
+        // Le TC ne voit QUE sa propre ligne
         $query->where('employee_id', $employee->id);
     }
 
-    $calendar = $query->latest()->get();
-
     return Inertia::render('Timesheets/Calendar', [
-        'calendar' => $calendar
+        'calendar' => $query->latest()->get()
     ]);
 }
+
 
 
     /**
