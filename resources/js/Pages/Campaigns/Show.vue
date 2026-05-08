@@ -30,6 +30,44 @@ const activeTab = ref(0);
 
 // --- LOGIQUE DE CAMPAGNE ---
 
+const campaignDialog = ref(false);
+const form = ref({
+    name: '',
+    description: '',
+    start_date: '',
+    end_date: '',
+    status: ''
+});
+
+/**
+ * Ouvre le modal de modification de la campagne
+ */
+const editCampaign = () => {
+    form.value = { ...props.campaign };
+    // Formatage des dates pour l'input
+    if (props.campaign.start_date) form.value.start_date = formatDateForInput(props.campaign.start_date);
+    if (props.campaign.end_date) form.value.end_date = formatDateForInput(props.campaign.end_date);
+    campaignDialog.value = true;
+};
+
+const formatDateForInput = (dateStr) => {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return dateStr;
+};
+
+/**
+ * Enregistre les modifications de la campagne
+ */
+const saveCampaign = () => {
+    router.put(route('campaigns.update', props.campaign.id), form.value, {
+        onSuccess: () => {
+            toast.add({ severity: 'success', summary: 'Succès', detail: 'Campagne mise à jour', life: 3000 });
+            campaignDialog.value = false;
+        }
+    });
+};
+
 /**
  * Clôturer la campagne (Status -> terminee)
  */
@@ -305,7 +343,7 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                     </div>
 
                     <div class="flex gap-3">
-                        <Button label="Modifier" icon="pi pi-pencil" severity="secondary" outlined class="rounded-xl" />
+                        <Button label="Modifier" icon="pi pi-pencil" severity="secondary" outlined class="rounded-xl" @click="editCampaign" />
                         <Button v-if="props.campaign.status === 'inactive'" label="Activer" icon="pi pi-check-circle" severity="success" outlined class="rounded-xl" @click="activateCampaign" />
                         <Button v-if="props.campaign.status === 'active'" label="Désactiver" icon="pi pi-power-off" severity="warn" outlined class="rounded-xl" @click="deactivateCampaign" />
                         <Button v-if="props.campaign.status !== 'terminee'" label="Clôturer" icon="pi pi-times-circle" severity="secondary" class="rounded-xl bg-slate-800 border-none" @click="closeCampaign" />
@@ -701,6 +739,42 @@ const getStatusSeverity = (status) => status === 'active' || status === 'actif' 
                                 :severity="releaseData.mode === 'cascade' ? 'danger' : 'primary'" 
                                 @click="executeRelease" class="rounded-xl px-6" />
                     </div>
+                </template>
+            </Dialog>
+
+            <!-- MODAL CRÉATION/EDITION DE LA CAMPAGNE -->
+            <Dialog v-model:visible="campaignDialog" header="Modifier la campagne" modal class="p-fluid rounded-2xl" :style="{width: '500px'}">
+                <div class="flex flex-col gap-4 mt-2">
+                    <div>
+                        <label class="font-semibold block mb-1">Nom de la campagne *</label>
+                        <InputText v-model="form.name" placeholder="Ex: Satisfaction Client Q1" />
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-1">Description</label>
+                        <textarea v-model="form.description" rows="3" placeholder="Objectifs et détails..." class="w-full rounded-xl border border-slate-200 p-3" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="font-semibold block mb-1">Date début *</label>
+                            <InputText type="date" v-model="form.start_date" />
+                        </div>
+                        <div>
+                            <label class="font-semibold block mb-1">Date fin</label>
+                            <InputText type="date" v-model="form.end_date" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="font-semibold block mb-2">Statut de la campagne</label>
+                        <div class="flex gap-2">
+                            <Button label="Inactive" :outlined="form.status !== 'inactive'" rounded @click="form.status = 'inactive'" severity="warn" size="small" />
+                            <Button label="Active" :outlined="form.status !== 'active'" rounded @click="form.status = 'active'" severity="success" size="small" />
+                            <Button label="Terminée" :outlined="form.status !== 'terminee'" rounded @click="form.status = 'terminee'" severity="secondary" size="small" />
+                        </div>
+                    </div>
+                </div>
+                <template #footer>
+                    <Button label="Annuler" severity="secondary" text @click="campaignDialog = false" />
+                    <Button label="Enregistrer" icon="pi pi-check" @click="saveCampaign" class="bg-blue-600 border-none rounded-xl px-6" />
                 </template>
             </Dialog>
         </div>
