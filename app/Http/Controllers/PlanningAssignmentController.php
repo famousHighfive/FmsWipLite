@@ -89,9 +89,10 @@ class PlanningAssignmentController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         return Inertia::render('Planning/Assignments/Create', [
+            'selected_supervisor_id' => $request->query('supervisor_id'),
             'supervisors' => Employee::with('user.role')
                             ->whereHas('user', function ($query) {
                                 $query->whereHas('role', function ($q) {

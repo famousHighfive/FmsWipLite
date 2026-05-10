@@ -7,13 +7,18 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\PlanningModelsController;
 use App\Http\Controllers\PlanningAssignmentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TimesheetController;
+use App\Http\Controllers\TimesheetEntryController;
 use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\CampaignController;
-use App\Http\Controllers\TimesheetController;
+// use App\Http\Controllers\TimesheetController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\TimesheetController as ControllersTimesheetController;
+// use App\Http\Controllers\AssignmentController; // Importation du contrôleur d'affectations
+// use App\Http\Controllers\PlanningAssignmentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -22,14 +27,16 @@ use Inertia\Inertia;
 Route::get('/', function () {
     if (auth()->check()) {
         $role = auth()->user()->role?->name;
+
         return redirect()->route(match ($role) {
             'admin' => 'dashboard.admin',
-            'cp'    => 'dashboard.cp',
-            'sup'   => 'dashboard.sup',
-            'tc'    => 'dashboard.tc',
+            'cp' => 'dashboard.cp',
+            'sup' => 'dashboard.sup',
+            'tc' => 'dashboard.tc',
             default => 'dashboard.tc',
         });
     }
+
     return redirect()->route('login');
 });
 
@@ -38,17 +45,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Route /dashboard redirige aussi selon le rôle (évite le bug TeleConseiller pour CP)
     Route::get('/dashboard', function () {
         $role = auth()->user()->role?->name;
+
         return redirect()->route(match ($role) {
             'admin' => 'dashboard.admin',
-            'cp'    => 'dashboard.cp',
-            'sup'   => 'dashboard.sup',
-            'tc'    => 'dashboard.tc',
+            'cp' => 'dashboard.cp',
+            'sup' => 'dashboard.sup',
+            'tc' => 'dashboard.tc',
             default => 'dashboard.tc',
         });
     })->name('dashboard');
 
+    Route::get('/dashboard/admin', [ReportingController::class, 'admin'])->middleware('role:admin')->name('dashboard.admin');
+    Route::get('/reports/export/excel', [ReportingController::class, 'exportExcel'])->name('reports.export.excel');
+    Route::get('/reports/export/pdf', [ReportingController::class, 'exportPdf'])->name('reports.export.pdf');
+
+    Route::get('/dashboard/cp', [ReportingController::class, 'chefPlateau'])->middleware('role:cp,admin')->name('dashboard.cp');
+
+    Route::get('/dashboard/sup', [ReportingController::class, 'superviseur'])->middleware('role:sup,admin')->name('dashboard.sup');
+
+    Route::get('/dashboard/tc', [ReportingController::class, 'teleConseiller'])->middleware('role:tc,admin')->name('dashboard.tc');
+
+    
     Route::get('/users/roles', [RoleController::class, 'index'])
-            ->name('roles.index');
+        ->name('roles.index');
 
     // --- GESTION DES PLANNINGS ---
     Route::middleware('role:cp,admin')->prefix('planning')->name('planning.')->group(function () {
@@ -87,9 +106,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cp', [AssignmentController::class, 'index'])->name('cp');
         Route::get('/sup', [AssignmentController::class, 'index'])->name('sup');
         Route::get('/tc', [AssignmentController::class, 'index'])->name('tc');
-        Route::get('/hierarchy', [AssignmentController::class, 'index'])->name('hierarchy');
+        Route::get('/hierarchy', [AssignmentController::class, 'hierarchy'])->name('hierarchy');
         Route::get('/reassign', [AssignmentController::class, 'index'])->name('reassign');
-        Route::get('/history', [AssignmentController::class, 'index'])->name('history');
+        Route::get('/history', [AssignmentController::class, 'history'])->name('history');
         Route::get('/tree', [AssignmentController::class, 'index'])->name('tree');
         Route::post('/{assignment}/release', [AssignmentController::class, 'release'])->name('release');
         Route::post('/{assignment}/reassign', [AssignmentController::class, 'reassign'])->name('reassign');
@@ -99,7 +118,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile/password', [ProfileController::class, 'edit'])->name('profile.password');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
+    // Route pour enregistrer ou mettre à jour une entrée de temps
+    
     Route::resource('/employees', EmployeeController::class);
     Route::prefix('employees')->name('employees.')->group(function () {
         Route::get('/assigned', [EmployeeController::class, 'index'])->name('assigned');
@@ -113,19 +133,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/closed', [CampaignController::class, 'index'])->name('closed');
         Route::get('/details', [CampaignController::class, 'index'])->name('details');
     });
-
-    Route::prefix('timesheets')->name('timesheets.')->group(function () {
-        Route::get('/entry', [TimesheetController::class, 'entry'])->name('entry');
-        Route::get('/validate', [TimesheetController::class, 'validation'])->name('validate');
-        Route::get('/history', [TimesheetController::class, 'history'])->name('history');
-        Route::get('/gaps', [TimesheetController::class, 'gaps'])->name('gaps');
-        Route::get('/overtime', [TimesheetController::class, 'overtime'])->name('overtime');
-        Route::get('/', [TimesheetController::class, 'index'])->name('index');
-        Route::post('/', [TimesheetController::class, 'store'])->name('store');
-        Route::get('/{timesheet}', [TimesheetController::class, 'show'])->name('show');
-        Route::post('/{timesheet}/approve', [TimesheetController::class, 'approve'])->name('approve');
-        Route::post('/{timesheet}/reject', [TimesheetController::class, 'reject'])->name('reject');
-    });
+    
+    Route::get('/timesheets', [TimesheetController::class, 'index'])->name('calendar.index');
+    // Route::prefix('timesheets')->name('timesheets.')->group(function () {
+    //     Route::get('/entry', [TimesheetController::class, 'entry'])->name('entry');
+    //     Route::get('/validate', [TimesheetController::class, 'validation'])->name('validate');
+    //     Route::get('/history', [TimesheetController::class, 'history'])->name('history');
+    //     Route::get('/gaps', [TimesheetController::class, 'gaps'])->name('gaps');
+    //     Route::get('/overtime', [TimesheetController::class, 'overtime'])->name('overtime');
+    //     Route::get('/', [TimesheetController::class, 'index'])->name('index');
+    //     Route::post('/', [TimesheetController::class, 'store'])->name('store');
+    //     Route::get('/{timesheet}', [TimesheetController::class, 'show'])->name('show');
+    //     Route::post('/{timesheet}/approve', [TimesheetController::class, 'approve'])->name('approve');
+    //     Route::post('/{timesheet}/reject', [TimesheetController::class, 'reject'])->name('reject');
+    // });
 
     Route::resource('/notifications', NotificationController::class);
 
@@ -135,6 +156,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('/positions', PositionController::class)->only(['index', 'show']);
     Route::get('/employees/{employee}/history', [EmployeeController::class, 'history'])->name('employees.history');
+    Route::post('/timesheet-entries', [TimesheetEntryController::class, 'store'])->name('timesheet-entries.store');
+
+    Route::get('/employees/history',    [EmployeeController::class, 'history'])->name('employees.history');//r
+    Route::resource('/employees', EmployeeController::class);//r
+    Route::resource('/positions', PositionController::class)->only(['index', 'show']);//r
+
     Route::middleware(['role:admin'])->group(function () {
 
         // USERS
@@ -169,9 +196,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::get('/dashboard/admin', [ReportingController::class, 'admin'])
-        ->middleware('role:admin')
-        ->name('dashboard.admin');
 
     Route::get('/dashboard/admin/stats', [ReportingController::class, 'generalStats'])
         ->middleware('role:admin')
@@ -181,17 +205,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('role:admin')
         ->name('dashboard.admin.alerts');
 
-    Route::get('/dashboard/cp', [ReportingController::class, 'cp'])
-        ->middleware('role:cp,admin')
-        ->name('dashboard.cp');
-
-    Route::get('/dashboard/sup', [ReportingController::class, 'sup'])
-        ->middleware('role:sup,admin')
-        ->name('dashboard.sup');
-
-    Route::get('/dashboard/tc', [ReportingController::class, 'tc'])
-        ->middleware('role:tc,admin')
-        ->name('dashboard.tc');
 
     /*
     |--------------------------------------------------------------------------
@@ -221,8 +234,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/export/excel', [ReportingController::class, 'exportExcel']);
     });
-
 });
+Route::post('/timesheet-entries', [TimesheetEntryController::class, 'store']);
+Route::post('/timesheets/{timesheet}/submit', [TimesheetController::class, 'submit'])->name('timesheets.submit');
 
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

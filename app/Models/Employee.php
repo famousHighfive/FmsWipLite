@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Employee extends Model
@@ -36,38 +37,12 @@ class Employee extends Model
     /**
      * Boot the model.
      */
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($employee) {
-            if (empty($employee->matricule)) {
-                $employee->matricule = self::generateMatricule();
-            }
-        });
-    }
+    
 
     /**
      * Génère un matricule unique (ex: EMP-2026-0001)
      */
-    public static function generateMatricule(): string
-    {
-        $year = date('Y');
-        $prefix = 'EMP-' . $year . '-';
-        
-        $lastEmployee = self::where('matricule', 'like', $prefix . '%')
-            ->orderBy('matricule', 'desc')
-            ->first();
-
-        if ($lastEmployee) {
-            $lastNumber = intval(substr($lastEmployee->matricule, -4));
-            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '0001';
-        }
-
-        return $prefix . $newNumber;
-    }
+   
 
     // Statuts disponibles
     const STATUS_ACTIF     = 'actif';
@@ -79,7 +54,77 @@ class Employee extends Model
         self::STATUS_INACTIF,
         self::STATUS_SUSPENDU,
     ];
-    
+
+    public function timesheets(): HasMany
+    {
+        return $this->hasMany(Timesheet::class);
+    }
+
+    public function timesheetEntries(): HasManyThrough
+    {
+        return $this->hasManyThrough(TimesheetEntry::class, Timesheet::class);
+    }
+
+
+    // -------------------------------------------------------
+    // BOOT
+    // -------------------------------------------------------
+    protected static function boot(): void
+    {
+        parent::boot();
+ 
+        // Génération automatique du matricule
+        static::creating(function (Employee $employee) {
+            if (empty($employee->matricule)) {
+                $employee->matricule = self::generateMatricule();
+            }
+        });
+ 
+        // Historisation automatique — uniquement position et statut
+        static::updating(function (Employee $employee) {
+            $dirty = $employee->getDirty();
+ 
+            // On ne track que si position_id ou status a changé
+            $hasPositionChange = array_key_exists('position_id', $dirty);
+            $hasStatusChange   = array_key_exists('status', $dirty);
+ 
+            if ($hasPositionChange || $hasStatusChange) {
+                EmployeeHistory::create([
+                    'employee_id'     => $employee->id,
+                    'old_position_id' => $employee->getOriginal('position_id'),
+                    'new_position_id' => $dirty['position_id'] ?? $employee->getOriginal('position_id'),
+                    'old_status'      => $employee->getOriginal('status'),
+                    'new_status'      => $dirty['status'] ?? $employee->getOriginal('status'),
+                    'changed_by'      => auth()->id(),
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Génère un matricule unique au format
+     */
+    public static function generateMatricule(): string
+    {
+        $prefix = 'EMP-' . now()->format('Ymd') . '-';
+        $last   = self::where('matricule', 'like', $prefix . '%')
+                      ->orderByDesc('matricule')
+                      ->value('matricule');
+
+        $next = $last
+            ? (int) substr($last, -4) + 1
+            : 1;
+
+        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+    }
+
+    // -------------------------------------------------------
+    // RELATIONS
+    // -------------------------------------------------------
+
+    /**
+     * Le poste actuel de l'employé
+     */
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);
@@ -142,9 +187,8 @@ class Employee extends Model
         return "{$this->first_name} {$this->last_name}";
     }
 
-    
-    public function planningAssignments(): HasMany
+    public function logs()
     {
-        return $this->hasMany(PlanningAssignment::class);
+        return $this->morphMany(ActivityLog::class, 'model');
     }
 }

@@ -2,199 +2,160 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Timesheet;
-use App\Models\TimesheetEntry;
-use App\Models\Employee;
+use App\Http\Requests\UpdateTimesheetRequest;
 use App\Models\Assignment;
-use App\Models\PlanningAssignment;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Employee;
+use App\Models\Timesheet;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class TimesheetController extends Controller
 {
+    /**
+     * Affiche la liste des feuilles de temps (Calendrier).
+     */
     public function index()
     {
-        $user = Auth::user();
+        $user = auth()->user();
         $employee = $user->employee;
+        $role = strtoupper($user->role->name); // Normalisation en majuscules
 
-        // Si l'utilisateur n'est pas lié à un employé, on retourne une liste vide ou gère le cas admin
-        if (!$employee && !$user->hasRole('admin')) {
-            return Inertia::render('Timesheets/Index', ['timesheets' => []]);
-        }
+        // Préparation de la requête de base
+        $query = Timesheet::with(['employee', 'validator', 'entries']);
 
-        $query = Timesheet::with(['employee.user', 'validator.user']);
+        // --- LOGIQUE DE FILTRAGE PAR RÔLE ---
 
-        if ($user->hasRole('tc')) {
+        if ($role === 'ADMIN') {
+            // L'ADMIN voit TOUT le monde sans exception
+            // On ne rajoute aucun "where", la requête reste brute
+        } elseif ($role === 'SUP' || $role === 'CP') {
+            // Sécurité : Si SUP ou CP n'a pas de profil employé, il ne voit rien (évite le crash ID on null)
+            if (! $employee) {
+                return Inertia::render('Timesheets/Calendar', ['calendar' => []]);
+            }
+
+            // Filtrage par affectation directe
+            $query->whereHas('employee.assignments', function ($q) use ($employee) {
+                $q->where('manager_id', $employee->id)
+                    ->where('status', 'actif');
+            });
+        } elseif ($role === 'TC') {
+            if (! $employee) {
+                return Inertia::render('Timesheets/Calendar', ['calendar' => []]);
+            }
+            // Le TC ne voit que lui-même
             $query->where('employee_id', $employee->id);
-        } elseif ($user->hasRole('sup')) {
-            $tcIds = Assignment::where('manager_id', $employee->id)->pluck('employee_id');
-            $query->whereIn('employee_id', $tcIds->push($employee->id));
-        } elseif ($user->hasRole('cp')) {
-            // Le CP voit les feuilles de temps de ses SUP
-            $supIds = Assignment::where('manager_id', $employee->id)->pluck('employee_id');
-            $query->whereIn('employee_id', $supIds);
         }
 
-        return Inertia::render('Timesheets/Index', [
-            'timesheets' => $query->latest()->get()
+        return Inertia::render('Timesheets/Calendar', [
+            'calendar' => $query->latest()->get(),
         ]);
     }
 
-    public function show($id)
+    /**
+     * Affiche le formulaire de création.
+     */
+    public function create()
     {
-        $timesheet = Timesheet::with(['employee.user', 'entries', 'validator.user'])->findOrFail($id);
-
-        return Inertia::render('Timesheets/Show', [
-            'timesheet' => $timesheet
-        ]);
+        return Inertia::render('Timesheets/Create');
     }
 
-    public function entry(Request $request)
-    {
-        $user = Auth::user();
-        $employee = $user->employee;
-
-        if (!$employee && !$user->hasRole('admin')) {
-            return redirect()->route('dashboard')->with('error', 'Aucun profil employé associé à votre compte.');
-        }
-        
-        // Par défaut, semaine en cours
-        $date = $request->input('date') ? Carbon::parse($request->input('date')) : Carbon::now();
-        $startOfWeek = $date->copy()->startOfWeek();
-        $endOfWeek = $date->copy()->endOfWeek();
-
-        // Récupérer les subordonnés
-        $subordinates = collect();
-        if ($employee) {
-            $subordinates = Assignment::where('manager_id', $employee->id)
-                ->where('status', 'actif')
-                ->with('employee.user')
-                ->get()
-                ->map(fn($a) => $a->employee)
-                ->filter(); // Éviter les nuls
-        }
-
-        // Si pas de subordonnés (ex: TC ou Admin ou SUP sans équipe), on permet la saisie pour soi-même si employé
-        if ($subordinates->isEmpty() && $employee) {
-             $subordinates = collect([$employee]);
-        }
-
-        // Récupérer les plannings pour cette période
-        $plannings = PlanningAssignment::whereIn('employee_id', $subordinates->pluck('id'))
-            ->where('status', 'validé')
-            ->where(function($q) use ($startOfWeek, $endOfWeek) {
-                $q->whereBetween('start_date', [$startOfWeek, $endOfWeek])
-                  ->orWhereBetween('end_date', [$startOfWeek, $endOfWeek]);
-            })
-            ->with('planningModel')
-            ->get();
-
-        return Inertia::render('Timesheets/Entry', [
-            'subordinates' => $subordinates->values(),
-            'plannings' => $plannings,
-            'startDate' => $startOfWeek->format('Y-m-d'),
-            'endDate' => $endOfWeek->format('Y-m-d'),
-        ]);
-    }
-
+    /**
+     * Enregistre une nouvelle ressource.
+     */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'period_start' => 'required|date',
-            'period_end' => 'required|date',
-            'entries' => 'required|array',
-            'entries.*.date' => 'required|date',
-            'entries.*.check_in' => 'nullable|string',
-            'entries.*.check_out' => 'nullable|string',
-            'entries.*.break_duration' => 'nullable|integer',
-            'entries.*.absence_type' => 'nullable|string',
+        // 1. Créer l'employé
+        $employee = Employee::create($request->all());
+
+        // 2. L'assigner à un Manager (SUP/CP) via ta table assignments
+        Assignment::create([
+            'employee_id' => $employee->id,
+            'manager_id' => auth()->user()->employee->id,
+            'start_date' => now(),
+            'status' => 'actif',
         ]);
 
-        $timesheet = Timesheet::updateOrCreate(
-            [
-                'employee_id' => $validated['employee_id'],
-                'period_start' => $validated['period_start'],
-                'period_end' => $validated['period_end'],
-            ],
-            ['status' => 'soumis']
-        );
+        // 3. Créer sa feuille de route immédiatement pour qu'il apparaisse au calendrier
+        Timesheet::create([
+            'employee_id' => $employee->id,
+            'period_start' => Carbon::now()->startOfWeek(),
+            'period_end' => Carbon::now()->endOfWeek(),
+            'status' => 'brouillon',
+        ]);
 
-        foreach ($validated['entries'] as $entryData) {
-            $entry = $timesheet->entries()->updateOrCreate(
-                ['date' => $entryData['date']],
-                $entryData
-            );
-            $entry->calculateHours();
-            $entry->save();
-        }
-
-        return redirect()->back()->with('success', 'Heures enregistrées et soumises.');
+        return redirect()->route('calendar.index');
     }
 
-    public function validation()
+    /**
+     * Affiche une ressource spécifique.
+     */
+    public function show(Timesheet $timesheet)
     {
-        $user = Auth::user();
-        $employee = $user->employee;
-
-        if (!$employee && !$user->hasRole('admin')) {
-            return redirect()->route('dashboard')->with('error', 'Accès refusé.');
-        }
-
-        $query = Timesheet::with(['employee.user', 'entries'])
-            ->where('status', 'soumis');
-
-        if ($user->hasRole('cp') && $employee) {
-            $supIds = Assignment::where('manager_id', $employee->id)->pluck('employee_id');
-            $query->whereIn('employee_id', $supIds);
-        } elseif ($user->hasRole('sup') && $employee) {
-            // Un superviseur pourrait valider les TC ? (Selon le CDC : CP valide SUP, SUP saisit TC)
-            $tcIds = Assignment::where('manager_id', $employee->id)->pluck('employee_id');
-            $query->whereIn('employee_id', $tcIds);
-        }
-
-        return Inertia::render('Timesheets/Validation', [
-            'pendingTimesheets' => $query->latest()->get()
+        return Inertia::render('Timesheets/Show', [
+            'timesheet' => $timesheet->load(['employee', 'validator', 'entries']),
         ]);
     }
 
-    public function approve(Timesheet $timesheet)
+    /**
+     * Affiche le formulaire d'édition.
+     */
+    public function edit(Timesheet $timesheet)
     {
-        $user = Auth::user();
-        if (!$user->employee) {
-            return redirect()->back()->with('error', 'Action impossible : profil employé manquant.');
-        }
-
-        $timesheet->update([
-            'status' => 'valide',
-            'validated_by' => $user->employee->id,
-            'validated_at' => now()
+        return Inertia::render('Timesheets/Edit', [
+            'timesheet' => $timesheet,
         ]);
-
-        return redirect()->back()->with('success', 'Feuille de temps validée.');
     }
 
-    public function reject(Timesheet $timesheet)
-    {
-        $timesheet->update(['status' => 'brouillon']);
+    /**
+     * Met à jour la ressource.
+     */
+    public function update(UpdateTimesheetRequest $request, Timesheet $timesheet) {}
 
-        return redirect()->back()->with('warning', 'Feuille de temps renvoyée en brouillon.');
+    /**
+     * Supprime la ressource.
+     */
+    public function destroy(Timesheet $timesheet) {}
+
+    /**
+     * Soumet définitivement la feuille de temps (Verrouillage).
+     */
+    /**
+     * Validation finale par le Chef de Plateau (CP)
+     */
+public function submit(Timesheet $timesheet)
+{
+    $user = auth()->user();
+    $role = strtoupper($user->role->name);
+    $employee = $user->employee;
+
+    // 1. On prépare les données de mise à jour
+    $updateData = [
+        'status' => 'soumis',
+        'validated_at' => now(),
+    ];
+
+    // 2. Logique conditionnelle pour le valideur
+    if ($role === 'ADMIN') {
+        // L'admin valide sans être forcément un employé
+        // On peut laisser validated_by à null ou mettre l'ID de l'employé s'il existe
+        $updateData['validated_by'] = $employee ? $employee->id : null;
+    } else {
+        // Pour les autres (CP), le profil employé est obligatoire
+        if (!$employee) {
+            return back()->withErrors(['message' => 'Profil employé manquant pour valider.']);
+        }
+        $updateData['validated_by'] = $employee->id;
     }
 
-    public function history()
-    {
-        return $this->index();
-    }
+    // 3. Exécution de la mise à jour
+    $timesheet->update($updateData);
 
-    public function gaps()
-    {
-        return Inertia::render('Timesheets/Gaps');
-    }
+    return back();
+}
 
-    public function overtime()
-    {
-        return Inertia::render('Timesheets/Overtime');
-    }
+
+
 }

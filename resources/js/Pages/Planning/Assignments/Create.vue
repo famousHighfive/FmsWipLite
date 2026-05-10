@@ -17,12 +17,13 @@ import {
 const props = defineProps({
     supervisors: Array,
     models: Array,
+    selected_supervisor_id: [String, Number],
 });
 
 const showSuccessModal = ref(false);
 
 const form = useForm({
-    supervisor_id: null,
+    supervisor_id: props.selected_supervisor_id ? Number(props.selected_supervisor_id) : null,
     planning_model_id: null,
     start_date: null,
     end_date: null,
@@ -45,22 +46,19 @@ const goToIndex = () => {
     <Head title="Créer une affectation de planning" />
 
     <AppLayout>
-        <template #header>
-            <div class="flex items-center gap-4 mb-6">
-                <Button
-                    @click="goToIndex"
-                    icon="pi pi-arrow-left"
-                    class="!bg-white !text-slate-600 !border-slate-200 !rounded-xl shadow-sm hover:!bg-slate-50"
-                    aria-label="Retour"
-                >
-                    <ArrowLeft class="w-5 h-5" />
-                </Button>
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800">Nouvelle Affectation</h2>
-                    <p class="text-slate-500 text-sm font-medium">Assigner un planning à un superviseur et son équipe</p>
-                </div>
+        <div class="max-w-2xl mx-auto mb-8 flex items-center gap-6 bg-white/50 backdrop-blur-sm p-6 rounded-[2rem] border border-white shadow-sm">
+            <Button
+                @click="goToIndex"
+                class="!bg-white !text-slate-600 !border-slate-200 !rounded-xl shadow-sm hover:!bg-slate-50 !w-12 !h-12 !p-0 flex items-center justify-center"
+                aria-label="Retour"
+            >
+                <ArrowLeft class="w-5 h-5" />
+            </Button>
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Nouvelle Affectation</h2>
+                <p class="text-blue-500/70 text-xs font-bold uppercase tracking-widest mt-1">Assigner un planning à un superviseur et son équipe</p>
             </div>
-        </template>
+        </div>
 
         <div class="max-w-2xl mx-auto py-8">
             <form @submit.prevent="submit" class="space-y-6">

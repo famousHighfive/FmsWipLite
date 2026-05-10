@@ -45,6 +45,57 @@ class AssignmentController extends Controller
     }
 
     /**
+     * Affiche la vue hiérarchique des affectations
+     */
+    public function hierarchy()
+    {
+        // On récupère toutes les campagnes actives avec leurs affectations imbriquées
+        // Campagne -> CP (manager_id null et position CP) -> SUP (manager_id CP) -> TC (manager_id SUP)
+        $hierarchy = Campaign::where('status', 'active')
+            ->with(['assignments' => function($query) {
+                $query->where('status', 'actif')
+                    ->with(['employee.position', 'position']);
+            }])
+            ->get()
+            ->map(function($campaign) {
+                // On structure les données pour le front-end
+                $assignments = $campaign->assignments;
+                
+                // 1. Trouver les Chefs de Plateau (CP) de la campagne
+                $cps = $assignments->filter(function($a) {
+                    return $a->position->code === 'CP';
+                })->map(function($cp) use ($assignments) {
+                    // 2. Pour chaque CP, trouver ses Superviseurs (SUP)
+                    $supervisors = $assignments->filter(function($a) use ($cp) {
+                        return $a->position->code === 'SUP' && $a->manager_id === $cp->employee_id;
+                    })->map(function($sup) use ($assignments) {
+                        // 3. Pour chaque SUP, trouver ses Téléconseillers (TC)
+                        $tcs = $assignments->filter(function($a) use ($sup) {
+                            return $a->position->code === 'TC' && $a->manager_id === $sup->employee_id;
+                        });
+                        
+                        $sup->teleconseillers = $tcs->values();
+                        return $sup;
+                    });
+                    
+                    $cp->supervisors = $supervisors->values();
+                    return $cp;
+                });
+
+                return [
+                    'id' => $campaign->id,
+                    'name' => $campaign->name,
+                    'status' => $campaign->status,
+                    'cps' => $cps->values()
+                ];
+            });
+
+        return Inertia::render('Assignments/Hierarchy', [
+            'hierarchy' => $hierarchy
+        ]);
+    }
+
+    /**
      * Enregistre une nouvelle affectation et crée une trace dans l'historique
      */
     public function store(Request $request)
@@ -201,10 +252,24 @@ class AssignmentController extends Controller
                 'old_campaign_id' => $sub->campaign_id,
                 'action_type' => 'release',
                 'changed_by' => Auth::id(),
-                'reason' => "Libération en cascade suite au départ du responsable",
+                'reason' => "Libération automatique (cascade) suite au départ de son manager",
             ]);
 
             $this->libererEnCascade($sub->employee_id, $campaignId);
         }
+    }
+
+    /**
+     * Affiche l'historique des affectations
+     */
+    public function history()
+    {
+        $histories = AssignmentHistory::with(['employee', 'oldManager', 'newManager', 'oldCampaign', 'newCampaign', 'author'])
+            ->latest()
+            ->paginate(15);
+
+        return Inertia::render('Assignments/History', [
+            'histories' => $histories
+        ]);
     }
 }

@@ -77,21 +77,19 @@ const terminateAssignment = (id) => {
     <Head title="Affectations des Plannings" />
 
     <AppLayout>
-        <template #header>
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800">Affectations</h2>
-                    <p class="text-slate-500 text-sm">Gérez les plannings des superviseurs et leurs équipes</p>
-                </div>
-
-                <Link :href="route('planning.assignments.create')">
-                    <Button class="!bg-blue-600 !border-none !rounded-xl !px-6 flex items-center gap-2">
-                        <UserPlus class="w-4 h-4 text-white" />
-                        <span class="font-bold text-white">Nouvelle Affectation</span>
-                    </Button>
-                </Link>
+        <div class="mb-8 flex justify-between items-center bg-white/50 backdrop-blur-sm p-6 rounded-[2rem] border border-white shadow-sm">
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Affectations</h2>
+                <p class="text-blue-500/70 text-xs font-bold uppercase tracking-widest mt-1">Gérez les plannings des superviseurs et leurs équipes</p>
             </div>
-        </template>
+
+            <Link :href="route('planning.assignments.create')">
+                <Button class="flex-shrink-0 !bg-blue-600 !border-none !rounded-2xl !px-8 !py-4 flex items-center gap-3 shadow-xl shadow-blue-500/20 hover:!bg-blue-700 hover:-translate-y-0.5 transition-all">
+                    <UserPlus class="w-5 h-5 text-white" />
+                    <span class="font-black text-white text-sm uppercase tracking-wider">Nouvelle Affectation</span>
+                </Button>
+            </Link>
+        </div>
 
         <div class="py-8 space-y-4">
             <div v-for="item in supervisorAssignments" :key="item.supervisor.id" class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6">
@@ -119,12 +117,23 @@ const terminateAssignment = (id) => {
                             <p class="text-xs text-slate-400 uppercase font-black">Superviseur</p>
                         </div>
                     </div>
+<<<<<<< HEAD
                     <div class="flex items-center gap-3">
                         <Button v-if="!item.supervisor.has_campaign" @click="openCampaignModal(item.supervisor)" class="!bg-indigo-600 !text-white !border-none !rounded-xl !px-4">
                             <Megaphone class="w-4 h-4 mr-2" />
                             Affecter Campagne
                         </Button>
                         <Button @click="viewTeleconseillers(item)" class="!bg-slate-100 !text-slate-700 !border-none !rounded-xl !px-4">
+=======
+                    <div class="flex items-center gap-2">
+                        <Link :href="route('planning.assignments.create', { supervisor_id: item.supervisor.id })">
+                            <Button class="!bg-blue-50 !text-blue-600 !border-none hover:!bg-blue-100">
+                                <UserPlus class="w-4 h-4 mr-2" />
+                                Affecter planning
+                            </Button>
+                        </Link>
+                        <Button @click="viewTeleconseillers(item)" class="!bg-slate-100 !text-slate-700 !border-none">
+>>>>>>> 3e5efeae7c2975e7930ea8885b6a3ce568d7cf27
                             <Eye class="w-4 h-4 mr-2" />
                             Voir l'équipe
                         </Button>
@@ -165,7 +174,13 @@ const terminateAssignment = (id) => {
                 </div>
                 <div v-else class="text-center py-8 text-slate-400">
                     <AlertCircle class="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                    Aucun planning affecté
+                    <p class="mb-4">Aucun planning affecté</p>
+                    <Link :href="route('planning.assignments.create', { supervisor_id: item.supervisor.id })">
+                        <Button class="!bg-blue-600 !text-white !border-none hover:!bg-blue-700 !px-6 !py-2 !rounded-xl shadow-lg shadow-blue-500/20 transition-all">
+                            <UserPlus class="w-4 h-4 mr-2" />
+                            Affecter un planning maintenant
+                        </Button>
+                    </Link>
                 </div>
             </div>
         </div>

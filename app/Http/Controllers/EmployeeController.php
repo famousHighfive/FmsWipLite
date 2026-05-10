@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\EmployeeHistory;
 use App\Models\Position;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -48,17 +49,17 @@ class EmployeeController extends Controller
         ]);
     }
 
-    /** Historique des modifications */
-    public function history(Employee $employee)
+    /**
+     * Historique global — toutes les modifications de tous les employés
+     */
+    public function history(Request $request)
     {
-        $employee->load('position');
-
-        $histories = $employee->histories()
-            ->with('changedBy')
-            ->paginate(15);
+        $histories = EmployeeHistory::with('employee', 'oldPosition', 'newPosition', 'changedBy')
+            ->latest('created_at')
+            ->paginate(15)
+            ->withQueryString();
 
         return Inertia::render('Employees/History', [
-            'employee'  => $employee,
             'histories' => $histories,
         ]);
     }
@@ -117,7 +118,6 @@ class EmployeeController extends Controller
     public function show(Employee $employee)
     {
         $employee->load('position', 'user', 'histories.changedBy');
-        // dd($employee);
         return Inertia::render('Employees/Show', [
             'employee' => $employee,
         ]);

@@ -31,10 +31,19 @@ const findActiveMenu = () => {
   const role = page.props.auth?.role;
   const config = menuConfig[role] ?? menuConfig.tc;
   
+  // Chercher d'abord une correspondance exacte dans les sous-menus
+  for (const [menuId, subMenus] of Object.entries(config.sub)) {
+    if (subMenus.some(sub => sub.href === currentPath)) {
+      activeMainMenu.value = menuId;
+      return;
+    }
+  }
+
+  // Si pas de correspondance exacte, chercher par préfixe (pour les routes de création/édition par ex)
   for (const [menuId, subMenus] of Object.entries(config.sub)) {
     if (subMenus.some(sub => {
       if (sub.href === '/') return currentPath === '/';
-      return currentPath.startsWith(sub.href);
+      return currentPath.startsWith(sub.href + '/') || currentPath === sub.href;
     })) {
       activeMainMenu.value = menuId;
       return;
@@ -90,10 +99,7 @@ watch(() => page.url, findActiveMenu);
 
         { label: 'Liste des employés',     href: '/employees' },
 
-        { label: 'Ajouter un employé',     href: '/employees/create' },
-
-        { label: 'Employés affectés',      href: '/employees/assigned' },
-        { label: 'Employés inactifs',     href: '/employees/inactifs' },
+        { label: 'Employés affectés',     href: '/employees/assigned' },
 
         { label: 'Employés non affectés',  href: '/employees/unassigned' },
 
@@ -143,7 +149,7 @@ watch(() => page.url, findActiveMenu);
 
       timesheets: [
 
-        { label: 'Saisie des heures',      href: '/timesheets/entry' },
+        { label: 'Saisie des heures',      href: '/timesheets' },
 
         { label: 'Validation des heures',  href: '/timesheets/validate' },
 
@@ -278,7 +284,7 @@ watch(() => page.url, findActiveMenu);
 
       timesheets: [
 
-        { label: 'Saisie des heures superviseurs', href: '/timesheets/entry' },
+        { label: 'Saisie des heures superviseurs', href: '/timesheets' },
 
         { label: 'Validation des heures',          href: '/timesheets/validate' },
 
@@ -359,7 +365,7 @@ watch(() => page.url, findActiveMenu);
 
       timesheets: [
 
-        { label: 'Saisie des heures TC',  href: '/timesheets/entry' },
+        { label: 'Saisie des heures TC',  href: '/timesheets' },
 
         { label: 'Historique des heures', href: '/timesheets/history' },
 

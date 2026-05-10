@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head , Link} from '@inertiajs/vue3';
 import Button from "primevue/button";
 import { useToast } from 'primevue/usetoast';
 import Toast from 'primevue/toast';

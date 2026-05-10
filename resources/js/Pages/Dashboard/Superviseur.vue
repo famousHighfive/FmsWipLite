@@ -1,68 +1,124 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { Users, Clock, Calendar, AlertCircle } from 'lucide-vue-next';
+import { Head, Link } from '@inertiajs/vue3';
+import { 
+    Users, 
+    CheckSquare, 
+    Clock, 
+    Award,
+    Mail,
+    Phone,
+    ArrowRight
+} from 'lucide-vue-next';
 
-defineProps({ stats: Object });
+const props = defineProps({
+    stats: {
+        type: Object,
+        default: () => ({})
+    },
+    myTeam: {
+        type: Array,
+        default: () => []
+    }
+});
 </script>
 
 <template>
+    <Head title="Dashboard - Superviseur" />
+
     <AppLayout>
         <template #header>
-            <h2 class="text-2xl font-black text-slate-800 tracking-tight">
-                Tableau de bord Superviseur
-            </h2>
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-black text-slate-800">Espace Superviseur</h2>
+                    <p class="text-slate-500 font-medium">Gestion de votre équipe et validation des temps</p>
+                </div>
+                <div class="p-2 bg-amber-50 rounded-2xl">
+                    <Award class="w-8 h-8 text-amber-600" />
+                </div>
+            </div>
         </template>
 
-        <div class="space-y-8">
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="bg-white/50 backdrop-blur-sm p-6 rounded-3xl border border-white shadow-sm hover:shadow-md transition-all">
-                    <div class="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-4">
-                        <Users class="w-6 h-6" />
+        <div class="py-8 space-y-8">
+            <!-- Stats Section -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl">
+                            <Users class="w-6 h-6" />
+                        </div>
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Mon Équipe</p>
                     </div>
-                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Équipe Directe</p>
-                    <h1 class="text-3xl font-black text-slate-800 mt-1">{{ stats.teamSize }}</h1>
+                    <h3 class="text-3xl font-black text-slate-800">{{ stats.myAgents }} agents</h3>
                 </div>
 
-                <div class="bg-white/50 backdrop-blur-sm p-6 rounded-3xl border border-white shadow-sm hover:shadow-md transition-all">
-                    <div class="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 mb-4">
-                        <Clock class="w-6 h-6" />
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+                            <CheckSquare class="w-6 h-6" />
+                        </div>
+                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Validations effectuées</p>
                     </div>
-                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Heures Équipe</p>
-                    <h1 class="text-3xl font-black text-slate-800 mt-1">{{ stats.workedHours }}h</h1>
+                    <h3 class="text-3xl font-black text-slate-800">{{ stats.validatedTimesheets }}</h3>
                 </div>
 
-                <div class="bg-white/50 backdrop-blur-sm p-6 rounded-3xl border border-white shadow-sm hover:shadow-md transition-all">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-4">
-                        <Calendar class="w-6 h-6" />
+                <div class="bg-indigo-600 p-6 rounded-[2rem] shadow-lg text-white">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="p-3 bg-white/20 rounded-2xl">
+                            <Clock class="w-6 h-6" />
+                        </div>
+                        <p class="text-xs font-black text-indigo-100 uppercase tracking-widest">En attente de validation</p>
                     </div>
-                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Prévu Semaine</p>
-                    <h1 class="text-3xl font-black text-slate-800 mt-1">{{ stats.plannedHours }}h</h1>
-                </div>
-
-                <div class="bg-white/50 backdrop-blur-sm p-6 rounded-3xl border border-white shadow-sm hover:shadow-md transition-all">
-                    <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 mb-4">
-                        <AlertCircle class="w-6 h-6" />
+                    <div class="flex justify-between items-baseline">
+                        <h3 class="text-3xl font-black">{{ stats.pendingMyValidation }}</h3>
+                        <Link :href="route('planning.validate')" class="text-xs font-bold text-white underline hover:text-indigo-100">Traiter maintenant</Link>
                     </div>
-                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Retards/Écarts</p>
-                    <h1 class="text-3xl font-black text-slate-800 mt-1">{{ stats.gapsCount }}</h1>
                 </div>
             </div>
 
-            <!-- Team Actions -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white/50 backdrop-blur-sm p-8 rounded-3xl border border-white shadow-sm">
-                    <h3 class="text-lg font-black text-slate-800 mb-4 tracking-tight">Gestion de l'équipe</h3>
-                    <p class="text-slate-500 text-sm mb-6">Accédez rapidement aux outils de management pour votre équipe.</p>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button class="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 rounded-2xl text-left transition-all group">
-                            <Clock class="w-5 h-5 text-blue-600 mb-2" />
-                            <p class="font-bold text-slate-700 group-hover:text-blue-600">Saisie Heures</p>
-                        </button>
-                        <button class="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 rounded-2xl text-left transition-all group">
-                            <Calendar class="w-5 h-5 text-blue-600 mb-2" />
-                            <p class="font-bold text-slate-700 group-hover:text-blue-600">Plannings</p>
-                        </button>
+            <!-- Team Members -->
+            <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+                <div class="flex justify-between items-center mb-8">
+                    <h3 class="text-xl font-black text-slate-800">Membres de l'Équipe</h3>
+                    <div class="flex gap-2">
+                        <span class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-[10px] font-black uppercase">Actifs ({{ myTeam.length }})</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div v-for="agent in myTeam" :key="agent.id" class="p-6 bg-slate-50 rounded-3xl border border-transparent hover:border-slate-200 transition-all group">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-slate-600 border border-slate-100 shadow-sm group-hover:scale-110 transition-transform">
+                                {{ agent.first_name.charAt(0) }}{{ agent.last_name.charAt(0) }}
+                            </div>
+                            <div class="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                {{ agent.status }}
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-lg font-black text-slate-800">{{ agent.first_name }} {{ agent.last_name }}</h4>
+                        <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mb-4">{{ agent.position?.name || 'Agent' }}</p>
+                        
+                        <div class="space-y-3 mb-6">
+                            <div class="flex items-center gap-3 text-slate-500">
+                                <Mail class="w-4 h-4" />
+                                <span class="text-xs font-medium">{{ agent.email }}</span>
+                            </div>
+                            <div class="flex items-center gap-3 text-slate-500">
+                                <Phone class="w-4 h-4" />
+                                <span class="text-xs font-medium">{{ agent.phone }}</span>
+                            </div>
+                        </div>
+
+                        <Link :href="route('employees.show', agent.id)" class="flex items-center justify-center gap-2 w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black hover:bg-slate-100 transition-colors">
+                            Voir Profile
+                            <ArrowRight class="w-3 h-3" />
+                        </Link>
+                    </div>
+
+                    <div v-if="myTeam.length === 0" class="col-span-full py-20 text-center">
+                        <Users class="w-16 h-16 text-slate-100 mx-auto mb-4" />
+                        <p class="text-slate-400 font-medium">Aucun agent affecté sous votre supervision pour le moment.</p>
                     </div>
                 </div>
             </div>

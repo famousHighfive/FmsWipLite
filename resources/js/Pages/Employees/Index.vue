@@ -263,7 +263,7 @@ const confirmDelete = (employee) => {
     <AppLayout>
         <Toast />
         <ConfirmDialog />
-
+        
         <div class="card">
             <!-- TOOLBAR -->
             <Toolbar class="mb-6">
@@ -379,7 +379,7 @@ const confirmDelete = (employee) => {
                         />
                         <Button
                             v-if="data.status !== 'inactif'"
-                            icon="pi pi-trash"
+                            icon="pi pi-ban"
                             variant="outlined"
                             rounded
                             severity="danger"
