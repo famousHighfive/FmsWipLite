@@ -75,10 +75,55 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    // campaigns route
     Route::resource('campaigns', CampaignController::class);
-
-    // route specifique pour le statut
+    Route::get('/active/campaigns', [CampaignController::class, 'active'])->name('active');
+    Route::get('/inactive/campaigns', [CampaignController::class, 'inactive'])->name('inactive');
+    Route::post(
+        '/assign/{assignment}/campaign',
+        [AssignmentController::class, 'assignNewCampaign']
+    )->name('assignments.assignCampaign');
     Route::patch('/campaigns/{campaign}/status', [CampaignController::class, 'changeStatus'])->name('campaigns.status');
+
+    // assignments route
+    Route::resource('assignments', AssignmentController::class);
+    Route::get('/assign/cp', [AssignmentController::class, 'assignCP'])->name('assign.cp');
+    Route::post('/assign/cp', [AssignmentController::class, 'storeCP'])
+        ->name('assign.cp.store');
+    Route::get('/assign/sup', [AssignmentController::class, 'assignSUP'])
+        ->name('assign.sup');
+    Route::post('/assign/sup', [AssignmentController::class, 'storeSUP'])
+        ->name('assign.sup.store');
+    Route::get(
+        '/assign/tc',
+        [AssignmentController::class, 'assignTC']
+    )->name('assign.tc');
+    Route::post(
+        '/assign/tc',
+        [AssignmentController::class, 'storeTC']
+    )->name('assign.tc.store');
+
+
+/**
+ * =========================================
+ * LIBÉRATION
+ * =========================================
+ */
+Route::post(
+    '/assignments/{assignment}/release',
+    [AssignmentController::class, 'release']
+)->name('assignments.release');
+
+/**
+ * =========================================
+ * RÉAFFECTATION
+ * =========================================
+ */
+Route::post(
+    '/assignments/{assignment}/reassign',
+    [AssignmentController::class, 'reassign']
+)->name('assignments.reassign');
 });
 
-require __DIR__.'/auth.php';
+
+require __DIR__ . '/auth.php';

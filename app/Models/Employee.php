@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 class Employee extends Model
 {
     /**
@@ -25,5 +27,11 @@ class Employee extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    // un employee peut avoir plusieurs affectations en cours
+     public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class);
     }
 }

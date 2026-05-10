@@ -20,10 +20,6 @@ protected function casts(): array
         'start_date' => 'date:d/m/Y', // Transforme la chaîne SQL en objet Carbon (Date uniquement)
         'end_date' => 'date:d/m/Y',   // Permet de manipuler la date avec ->format() ou ->addDays()
     ];
-
-    /**
-     * Hé, je sais que dans la base de données c'est juste du texte, mais quand je le récupère dans mon code, traite-le comme une date intelligente (Carbon) et affiche-le moi au format français.
-     */
 }
 
   

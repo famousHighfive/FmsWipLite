@@ -298,7 +298,7 @@ const getStatusSeverity = (status) => {
                     <i class="pi pi-exclamation-triangle text-red-500 text-3xl" />
                     <div class="flex flex-col">
                         <span>Voulez-vous clôturer la campagne <b>{{ selectedCampaign?.name }}</b> ?</span>
-                        <span class="text-sm text-slate-500 mt-2 italic">Cette action passera le statut de la campagne à "Terminée".</span>
+                        <span class="text-sm text-slate-500 mt-2 italic">Cette action desaffectera toutes les ressources.".</span>
                     </div>
                 </div>
                 <template #footer>

@@ -3,93 +3,122 @@
 namespace App\Http\Controllers;
 
 use App\Models\Campaign;
-use App\Models\Assignment;
-use App\Models\ActivityLog;
-use App\Http\Requests\Campaigns\StoreCampaignRequest;
-use App\Enums\CampaignStatus;
+use App\Models\ActivityLog; // Importation du modèle ActivityLog pour l'historique
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth; // Importation de Auth pour récupérer l'utilisateur connecté
 use Inertia\Inertia;
 
 class CampaignController extends Controller
 {
     /**
-     * Liste des campagnes avec pagination et filtres
+     * Liste des campagnes avec compteurs d'affectations
      */
-    public function index(Request $request)
+    public function index()
     {
-        $query = Campaign::withCount(['assignments' => function ($query) {
+        // On récupère les campagnes avec le nombre d'affectations actives pour chaque campagne
+        $campaigns = Campaign::withCount(['assignments' => function ($query) {
             $query->where('status', 'actif');
-        }]);
-
-        // Filtre par recherche (nom)
-        if ($request->search) {
-            $query->where('name', 'like', '%' . $request->search . '%');
-        }
-
-        // Filtre par statut
-        if ($request->status && $request->status !== 'Tous') {
-            $query->where('status', strtolower($request->status));
-        }
-
-        $campaigns = $query->latest()->paginate(10)->withQueryString();
-
+        }])->latest()->get();
+        
+        // Retourne la vue de la liste des campagnes (Image 3)
         return Inertia::render('Campaigns/Index', [
             'campaigns' => $campaigns,
-            'filters' => $request->only(['search', 'status']),
         ]);
+    }
+
+     /**
+     * Campagnes actives
+     */
+    public function active()
+    {
+        $campaigns = Campaign::withCount([
+            'assignments' => function ($query) {
+                $query->where('status', 'actif');
+            }
+        ])
+        ->where('status', 'active')
+        ->latest()
+        ->get();
+
+        return Inertia::render('Campaigns/ActiveCampaign', [
+            'campaigns' => $campaigns,
+        ]);
+    }
+
+    /**
+     * Campagnes inactives + terminées
+     */
+    public function inactive()
+    {
+        $campaigns = Campaign::withCount([
+            'assignments' => function ($query) {
+                $query->where('status', 'actif');
+            }
+        ])
+        ->whereIn('status', ['inactive'])
+        ->latest()
+        ->get();
+
+        return Inertia::render('Campaigns/InactiveCampaign', [
+            'campaigns' => $campaigns,
+        ]);
+    }
+
+
+    /**
+     * Formulaire de création (non utilisé avec le modal PrimeVue)
+     */
+    public function create()
+    {
+        //
     }
 
     /**
      * Enregistrer une nouvelle campagne
      */
-    public function store(StoreCampaignRequest $request)
+    public function store(Request $request)
     {
-        // On valide les données via le FormRequest
-        $validated = $request->validated();
+        // Validation des données entrantes
+        $validated = $request->validate([
+            'name' => 'required|string|max:255', // Nom obligatoire
+            'description' => 'nullable|string', // Description optionnelle
+            'start_date' => 'required|date', // Date de début obligatoire
+            'end_date' => 'nullable|date|after_or_equal:start_date', // Date de fin doit être après ou égale au début
+            'status' => 'required|in:active,inactive,terminee', // Statut limité aux valeurs définies
+        ]);
 
-        DB::transaction(function () use ($validated) {
-            // Création de la campagne avec le statut par défaut 'inactive'
-            $campaign = Campaign::create([
-                'name' => $validated['name'],
-                'description' => $validated['description'] ?? null,
-                'start_date' => $validated['start_date'],
-                'end_date' => $validated['end_date'] ?? null,
-                'status' => CampaignStatus::INACTIVE->value,
-            ]);
+        // Création de la campagne
+        $campaign = Campaign::create($validated);
 
-            // Trace de l'opération
-            ActivityLog::create([
-                'user_id' => Auth::id(),
-                'action' => 'create',
-                'model_type' => Campaign::class,
-                'model_id' => $campaign->id,
-                'description' => "Création de la campagne : {$campaign->name}",
-                'ip_address' => request()->ip(),
-            ]);
-        });
+        // Enregistrement de l'action dans l'historique (ActivityLog)
+        ActivityLog::create([
+            'user_id' => Auth::id(), // ID de l'utilisateur qui crée
+            'action' => 'create', // Type d'action
+            'model_type' => Campaign::class, // Modèle concerné
+            'model_id' => $campaign->id, // ID de la campagne créée
+            'description' => "Création de la campagne : {$campaign->name}", // Description détaillée
+            'ip_address' => $request->ip(), // Adresse IP de l'utilisateur
+        ]);
 
-        return redirect()->route('campaigns.index')
-            ->with('success', 'Campagne créée avec succès.');
+        // Redirection vers l'index avec un message de succès
+        return redirect()->back();
     }
 
     /**
-     * Voir le détail d'une campagne
+     * Affiche le détail d'une campagne avec sa hiérarchie (Image 1)
      */
     public function show(Campaign $campaign)
     {
-        // Eager loading des affectations actives et de la hiérarchie
+        // On charge les affectations avec les relations pour construire la vue hiérarchique
         $campaign->load(['assignments' => function ($query) {
             $query->where('status', 'actif')->with(['employee', 'manager', 'position']);
         }]);
 
-        // Récupération de l'historique des 20 derniers mouvements
-        $history = \App\Models\AssignmentHistory::where('new_campaign_id', $campaign->id)
-            ->orWhere('old_campaign_id', $campaign->id)
+        // On récupère aussi l'historique spécifique à cette campagne
+        $history = \App\Models\AssignmentHistory::where('old_campaign_id', $campaign->id)
+            ->orWhere('new_campaign_id', $campaign->id)
             ->with(['employee', 'author'])
             ->latest()
-            ->take(20)
             ->get();
 
         return Inertia::render('Campaigns/Show', [
@@ -102,112 +131,97 @@ class CampaignController extends Controller
     }
 
     /**
+     * Formulaire d'édition (non utilisé avec le modal PrimeVue)
+     */
+    public function edit(Campaign $campaign)
+    {
+        //
+    }
+
+    /**
      * Mettre à jour une campagne
      */
-    public function update(StoreCampaignRequest $request, Campaign $campaign)
+    public function update(Request $request, Campaign $campaign)
     {
-        $validated = $request->validated();
+        // Validation des données de mise à jour
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'status' => 'required|in:active,inactive,terminee',
+        ]);
 
-        DB::transaction(function () use ($campaign, $validated) {
-            $campaign->update($validated);
+        // Mise à jour de la campagne
+        $campaign->update($validated);
 
-            // Trace de l'opération
-            ActivityLog::create([
-                'user_id' => Auth::id(),
-                'action' => 'update',
-                'model_type' => Campaign::class,
-                'model_id' => $campaign->id,
-                'description' => "Mise à jour de la campagne : {$campaign->name}",
-                'ip_address' => request()->ip(),
-            ]);
-        });
+        // Enregistrement de la modification dans l'historique
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'update',
+            'model_type' => Campaign::class,
+            'model_id' => $campaign->id,
+            'description' => "Mise à jour de la campagne : {$campaign->name}",
+            'ip_address' => $request->ip(),
+        ]);
 
-        return redirect()->back()->with('success', 'Campagne mise à jour.');
+        // Retour à la page précédente
+        return redirect()->back();
     }
 
     /**
-     * Supprimer une campagne
+     * Changer uniquement le statut d'une campagne
      */
-    public function destroy(Campaign $campaign)
+    public function changeStatus(Request $request, Campaign $campaign)
     {
-        // Une campagne active ne peut pas être supprimée
-        if ($campaign->status === CampaignStatus::ACTIVE->value) {
-            return redirect()->back()->with('error', "Une campagne active ne peut pas être supprimée.");
-        }
 
-        DB::transaction(function () use ($campaign) {
-            $name = $campaign->name;
-            $id = $campaign->id;
-            
-            $campaign->delete();
+        // Validation du nouveau statut
+        $validated = $request->validate([
+            'status' => 'required|in:active,inactive', // Uniquement actif/inactif via ce bouton
+        ]);
 
-            // Trace de l'opération
-            ActivityLog::create([
-                'user_id' => Auth::id(),
-                'action' => 'delete',
-                'description' => "Suppression de la campagne : {$name} (ID: {$id})",
-                'ip_address' => request()->ip(),
-            ]);
-        });
+        // Sauvegarde de l'ancien statut pour la description
+        $oldStatus = $campaign->status;
+        
+        // Mise à jour du statut
+        $campaign->update(['status' => $validated['status']]);
 
-        return redirect()->route('campaigns.index')->with('success', 'Campagne supprimée.');
+        // Tracé spécifique pour le changement de statut (Historique)
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'status_change',
+            'model_type' => Campaign::class,
+            'model_id' => $campaign->id,
+            'description' => "Changement de statut de la campagne {$campaign->name} : {$oldStatus} -> {$validated['status']}",
+            'ip_address' => $request->ip(),
+        ]);
+
+        return redirect()->back();
     }
 
     /**
-     * Activer une campagne
+     * Supprimer une campagne (En réalité, on la clôture/termine)
      */
-    public function activate(Campaign $campaign)
+    public function destroy(Request $request, Campaign $campaign)
     {
-        $this->changeStatus($campaign, CampaignStatus::ACTIVE);
-        return redirect()->back()->with('success', 'Campagne activée.');
-    }
+        // On garde l'ancien statut
+        $oldStatus = $campaign->status;
 
-    /**
-     * Désactiver une campagne
-     */
-    public function deactivate(Campaign $campaign)
-    {
-        $this->changeStatus($campaign, CampaignStatus::INACTIVE);
-        return redirect()->back()->with('success', 'Campagne désactivée.');
-    }
+        // On ne supprime pas physiquement, on change le statut en 'terminee'
+        $campaign->update(['status' => 'terminee']);
 
-    /**
-     * Clôturer une campagne
-     */
-    public function complete(Campaign $campaign)
-    {
-        $this->changeStatus($campaign, CampaignStatus::COMPLETED);
-        return redirect()->back()->with('success', 'Campagne terminée et affectations clôturées.');
-    }
+        // je vais ecrire une methode pour liberer automatiquement toute les resources de cette campagnes
 
-    /**
-     * Logique privée de changement de statut
-     */
-    private function changeStatus(Campaign $campaign, CampaignStatus $status)
-    {
-        DB::transaction(function () use ($campaign, $status) {
-            $oldStatus = $campaign->status;
-            $campaign->update(['status' => $status->value]);
+        // Enregistrement de la clôture (via bouton supprimer) dans l'historique
+        ActivityLog::create([
+            'user_id' => Auth::id(),
+            'action' => 'cloture_campagne', // Action plus explicite
+            'model_type' => Campaign::class,
+            'model_id' => $campaign->id,
+            'description' => "Campagne clôturée : {$campaign->name}. Ancien statut: {$oldStatus}",
+            'ip_address' => $request->ip(),
+        ]);
 
-            // Si on clôture la campagne, on ferme toutes les affectations actives
-            if ($status === CampaignStatus::COMPLETED) {
-                Assignment::where('campaign_id', $campaign->id)
-                    ->where('status', 'actif')
-                    ->update([
-                        'status' => 'termine',
-                        'end_date' => now()
-                    ]);
-            }
-
-            // Trace de l'opération
-            ActivityLog::create([
-                'user_id' => Auth::id(),
-                'action' => 'status_change',
-                'model_type' => Campaign::class,
-                'model_id' => $campaign->id,
-                'description' => "Changement de statut : {$oldStatus} -> {$status->value}",
-                'ip_address' => request()->ip(),
-            ]);
-        });
+        return redirect()->back();
     }
 }
