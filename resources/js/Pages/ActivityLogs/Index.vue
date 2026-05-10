@@ -1,9 +1,21 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import Tag from 'primevue/tag';
+import { ref } from 'vue';
+import { FilterMatchMode } from '@primevue/core/api';
 
 defineProps({
-    logs: Object
+    logs: Array // Reçu comme Array maintenant
+});
+
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 </script>
 
@@ -25,92 +37,61 @@ defineProps({
         </template>
 
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <DataTable 
+                :value="logs" 
+                v-model:filters="filters"
+                :globalFilterFields="['user.name', 'action', 'model_type', 'description', 'ip_address']"
+                paginator :rows="10" 
+                class="p-datatable-sm"
+                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} activités"
+                stripedRows
+            >
+                <template #header>
+                    <div class="flex justify-between items-center py-2 px-4">
+                        <h3 class="text-lg font-black text-slate-800 m-0">
+                            Activités récentes
+                        </h3>
+                        <IconField iconPosition="left">
+                            <InputIcon>
+                                <i class="pi pi-search" />
+                            </InputIcon>
+                            <InputText v-model="filters['global'].value" placeholder="Recherche automatique..." class="!rounded-xl !bg-slate-50/50" />
+                        </IconField>
+                    </div>
+                </template>
 
-            <div class="px-6 py-5 border-b border-slate-100">
-                <h3 class="text-lg font-black text-slate-800">
-                    Activités récentes
-                </h3>
-            </div>
+                <Column field="user.name" header="Utilisateur" sortable>
+                    <template #body="{ data }">
+                        <span class="font-bold text-slate-700">{{ data.user?.name || 'Système' }}</span>
+                    </template>
+                </Column>
 
-            <div class="overflow-x-auto">
+                <Column field="action" header="Action" sortable>
+                    <template #body="{ data }">
+                        <Tag :value="data.action" severity="info" class="!text-[10px] font-black uppercase" />
+                    </template>
+                </Column>
 
-                <table class="w-full">
-
-                    <thead class="bg-slate-50">
-                        <tr>
-
-                            <th class="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase">
-                                Utilisateur
-                            </th>
-
-                            <th class="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase">
-                                Action
-                            </th>
-
-                            <th class="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase">
-                                Modèle
-                            </th>
-
-                            <th class="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase">
-                                Description
-                            </th>
-
-                            <th class="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase">
-                                IP
-                            </th>
-
-                            <th class="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase">
-                                Date
-                            </th>
-
-                        </tr>
-                    </thead>
-
-                    <tbody>
-
-                        <tr
-                            v-for="log in logs.data"
-                            :key="log.id"
-                            class="border-b border-slate-100 hover:bg-slate-50 transition"
-                        >
-
-                            <td class="px-6 py-5 font-bold text-slate-700">
-                                {{ log.user?.name }}
-                            </td>
-
-                            <td class="px-6 py-5">
-                                <span
-                                    class="px-3 py-1 rounded-full text-xs font-black uppercase bg-blue-100 text-blue-700"
-                                >
-                                    {{ log.action }}
-                                </span>
-                            </td>
-
-                            <td class="px-6 py-5 text-slate-500">
-                                {{ log.model_type }}
-                            </td>
-
-                            <td class="px-6 py-5 text-slate-600">
-                                {{ log.description }}
-                            </td>
-
-                            <td class="px-6 py-5 text-slate-500">
-                                {{ log.ip_address }}
-                            </td>
-
-                            <td class="px-6 py-5 text-slate-500">
-                                {{ log.created_at }}
-                            </td>
-
-                        </tr>
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
+                <Column field="model_type" header="Modèle" sortable class="text-slate-500" />
+                
+                <Column field="description" header="Description" sortable class="text-slate-600" />
+                
+                <Column field="ip_address" header="IP" sortable class="text-slate-500" />
+                
+                <Column field="created_at" header="Date" sortable>
+                    <template #body="{ data }">
+                        {{ new Date(data.created_at).toLocaleString('fr-FR') }}
+                    </template>
+                </Column>
+            </DataTable>
         </div>
 
     </AppLayout>
 </template>
+
+<style scoped>
+:deep(.p-datatable-thead > tr > th) {
+    @apply !bg-slate-50 !text-slate-500 !text-xs !font-black !uppercase !py-4;
+}
+</style>

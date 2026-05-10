@@ -5,9 +5,13 @@ import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Dialog from "primevue/dialog";
 import Button from 'primevue/button';
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
 import TimesCard from "./TimesCard.vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import AppLayout from "@/Layouts/AppLayout.vue";
+import { FilterMatchMode } from '@primevue/core/api';
 
 const props = defineProps({
   calendar: Array,
@@ -16,6 +20,11 @@ const props = defineProps({
 // --- SÉLECTION MULTIPLE & PAGINATION ---
 const selectedEmployees = ref([]);
 const rows = ref(5); 
+
+// --- FILTRAGE AUTOMATIQUE PRIME VUE ---
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+});
 
 // --- GESTION DES RÔLES ---
 const user = computed(() => usePage().props.auth.user);
@@ -135,6 +144,8 @@ const getTotalsData = (timesheet) => {
 
       <DataTable 
         :value="calendar" 
+        v-model:filters="filters"
+        :globalFilterFields="['employee.first_name', 'employee.last_name', 'employee.matricule', 'status']"
         v-model:selection="selectedEmployees" 
         :paginator="true" 
         :rows="rows" 
@@ -144,6 +155,16 @@ const getTotalsData = (timesheet) => {
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
         currentPageReportTemplate="{first}-{last} sur {totalRecords}"
       >
+        <template #header>
+            <div class="flex justify-end mb-2">
+                <IconField iconPosition="left">
+                    <InputIcon>
+                        <i class="pi pi-search" />
+                    </InputIcon>
+                    <InputText v-model="filters['global'].value" placeholder="Rechercher un agent..." class="!rounded-xl !bg-white/80" />
+                </IconField>
+            </div>
+        </template>
         <Column selectionMode="multiple" headerStyle="width: 3rem; background: #f8fafc" frozen></Column>
         
         <Column frozen header="Employés" style="min-width: 250px">

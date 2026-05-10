@@ -4,9 +4,18 @@ import { Head } from '@inertiajs/vue3';
 import { TrendingUp, User, Clock } from 'lucide-vue-next';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import { ref } from 'vue';
+import { FilterMatchMode } from '@primeuix/api';
 
 defineProps({
     productivityStats: Array
+});
+
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 </script>
 
@@ -27,7 +36,23 @@ defineProps({
                     Classement par ratio de production
                 </h3>
                 
-                <DataTable :value="productivityStats" class="p-datatable-sm" paginator :rows="15">
+                <DataTable 
+                    :value="productivityStats" 
+                    v-model:filters="filters"
+                    :globalFilterFields="['name']"
+                    class="p-datatable-sm" 
+                    paginator :rows="15"
+                >
+                    <template #header>
+                        <div class="flex justify-end mb-4">
+                            <IconField iconPosition="left">
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText v-model="filters['global'].value" placeholder="Chercher un collaborateur..." class="!rounded-xl !bg-slate-50/50" />
+                            </IconField>
+                        </div>
+                    </template>
                     <Column field="name" header="Collaborateur" sortable>
                         <template #body="{ data }">
                             <span class="font-bold text-slate-700">{{ data.name }}</span>

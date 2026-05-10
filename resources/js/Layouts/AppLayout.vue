@@ -4,6 +4,8 @@ import { Link, usePage, Head } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
+import Toast from 'primevue/toast';
+import ConfirmDialog from 'primevue/confirmdialog';
 import {
   LayoutDashboard,
   Users,
@@ -487,7 +489,7 @@ const sidebarWidth = computed(() => (isHoveringSidebar.value || !hasSubMenu.valu
     >
       <div class="flex items-center px-4 border-b border-blue-100/50 bg-gradient-to-r from-blue-600 to-indigo-600 h-20 flex-shrink-0">
         <Link :href="route('dashboard')" class="flex items-center gap-3">
-          <ApplicationLogo class="h-8 w-auto fill-current text-white flex-shrink-0" />
+          <ApplicationLogo class="h-9 w-auto flex-shrink-0" />
           <span v-if="isHoveringSidebar || !hasSubMenu" class="text-xl font-black text-white tracking-tighter whitespace-nowrap uppercase">WipLite</span>
         </Link>
       </div>
@@ -591,6 +593,8 @@ const sidebarWidth = computed(() => (isHoveringSidebar.value || !hasSubMenu.valu
         <slot />
       </div>
     </main>
+    <Toast />
+    <ConfirmDialog />
   </div>
 </template>
 

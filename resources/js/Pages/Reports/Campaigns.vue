@@ -5,10 +5,19 @@ import { Megaphone, CheckCircle2, XCircle, BarChart3 } from 'lucide-vue-next';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import { ref } from 'vue';
+import { FilterMatchMode } from '@primevue/core/api';
 
 defineProps({
     campaigns: Array,
     stats: Object
+});
+
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 </script>
 
@@ -56,7 +65,23 @@ defineProps({
                     Détail par campagne
                 </h3>
                 
-                <DataTable :value="campaigns" class="p-datatable-sm" paginator :rows="10">
+                <DataTable 
+                    :value="campaigns" 
+                    v-model:filters="filters"
+                    :globalFilterFields="['name', 'status']"
+                    class="p-datatable-sm" 
+                    paginator :rows="10"
+                >
+                    <template #header>
+                        <div class="flex justify-end mb-4">
+                            <IconField iconPosition="left">
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText v-model="filters['global'].value" placeholder="Filtrer les campagnes..." class="!rounded-xl !bg-slate-50/50" />
+                            </IconField>
+                        </div>
+                    </template>
                     <Column field="name" header="Campagne" sortable />
                     <Column field="status" header="Statut" sortable>
                         <template #body="{ data }">

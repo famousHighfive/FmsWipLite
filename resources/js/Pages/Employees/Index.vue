@@ -20,12 +20,13 @@ import InputNumber from "primevue/inputnumber";
 import Message from "primevue/message";
 import Toast from "primevue/toast";
 import ConfirmDialog from "primevue/confirmdialog";
+import { FilterMatchMode } from '@primevue/core/api';
 
 // ---------------------------------------------------------
 // PROPS
 // ---------------------------------------------------------
 const props = defineProps({
-    employees: Object,
+    employees: Array, // Reçu comme Array maintenant
     positions: Array,
     filters: Object,
 });
@@ -38,23 +39,10 @@ const confirm = useConfirm();
 const dt = ref();
 
 // ---------------------------------------------------------
-// RECHERCHE — debounce automatique
+// FILTRAGE AUTOMATIQUE PRIME VUE (Client-side)
 // ---------------------------------------------------------
-const search = ref(props.filters?.search ?? "");
-let debounceTimer = null;
-
-watch(search, (value) => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-        router.get(
-            route("employees.index"),
-            {
-                search: value,
-                page: 1,
-            },
-            { preserveState: true, replace: true },
-        );
-    }, 400);
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 
 // ---------------------------------------------------------
@@ -199,37 +187,6 @@ const getStatusSeverity = (status) => {
 const exportCSV = () => dt.value.exportCSV();
 
 // ---------------------------------------------------------
-// PAGINATION CÔTÉ SERVEUR
-// ---------------------------------------------------------
-const onPageChange = (event) => {
-    router.get(
-        route("employees.index"),
-        {
-            page: event.page + 1,
-            search: search.value,
-            per_page: event.rows,
-        },
-        { preserveState: true },
-    );
-};
-
-// ---------------------------------------------------------
-// TRI CÔTÉ SERVEUR
-// ---------------------------------------------------------
-const onSort = (event) => {
-    router.get(
-        route("employees.index"),
-        {
-            search: search.value,
-            page: 1,
-            sort_field: event.sortField,
-            sort_order: event.sortOrder === 1 ? "asc" : "desc",
-        },
-        { preserveState: true, replace: true },
-    );
-};
-
-// ---------------------------------------------------------
 // SUPPRESSION
 // ---------------------------------------------------------
 const confirmDelete = (employee) => {
@@ -261,61 +218,58 @@ const confirmDelete = (employee) => {
 
 <template>
     <AppLayout>
-        <Toast />
-        <ConfirmDialog />
-        
-        <div class="card">
-            <!-- TOOLBAR -->
-            <Toolbar class="mb-6">
-                <template #start>
-                    <Button
-                        label="Nouvel employé"
-                        icon="pi pi-plus"
-                        class="mr-2 !bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-0"
-                        @click="openCreate"
-                    />
-                </template>
-                <template #end>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-black text-slate-800 tracking-tight">Gestion des Employés</h2>
+                    <p class="text-slate-500 font-medium">Administrez vos collaborateurs et leurs informations.</p>
+                </div>
+                <div class="flex gap-3">
                     <Button
                         label="Exporter"
                         icon="pi pi-upload"
-                        severity="secondary"
+                        class="!bg-white !text-blue-600 !border-blue-100 !rounded-2xl !px-6 !py-3 !font-black !text-xs !uppercase !tracking-widest shadow-sm hover:!bg-blue-50 transition-all"
                         @click="exportCSV"
                     />
-                </template>
-            </Toolbar>
+                    <Button
+                        label="Nouvel employé"
+                        icon="pi pi-plus"
+                        class="!bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-0 !rounded-2xl !px-6 !py-3 !font-black !text-xs !uppercase !tracking-widest !text-white shadow-xl shadow-blue-500/20 hover:-translate-y-0.5 transition-all"
+                        @click="openCreate"
+                    />
+                </div>
+            </div>
 
-            <!-- DATATABLE -->
-            <DataTable
-                ref="dt"
-                :value="employees.data"
-                :lazy="true"
-                :paginator="true"
-                :rows="employees.per_page"
-                :totalRecords="employees.total"
-                :rowsPerPageOptions="[10, 25, 50]"
-                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} employés"
-                @page="onPageChange"
-                @sort="onSort"
-            >
-                <template #header>
-                    <div
-                        class="flex flex-wrap gap-2 items-center justify-between"
-                    >
-                        <h4 class="m-0">Liste des employés</h4>
-                        <IconField>
-                            <InputIcon>
-                                <i class="pi pi-search" />
-                            </InputIcon>
-                            <InputText
-                                v-model="search"
-                                placeholder="Rechercher..."
-                                class="focus:!border-blue-700"
-                            />
-                        </IconField>
-                    </div>
-                </template>
+            <div class="card !border-0 !shadow-2xl !shadow-slate-200/50 !rounded-[2.5rem] overflow-hidden bg-white/70 backdrop-blur-md border border-white/50">
+                <!-- DATATABLE -->
+                <DataTable
+                    ref="dt"
+                    :value="employees"
+                    v-model:filters="filters"
+                    :globalFilterFields="['matricule', 'first_name', 'last_name', 'email', 'phone', 'position.name', 'status']"
+                    :paginator="true"
+                    :rows="10"
+                    :rowsPerPageOptions="[10, 25, 50]"
+                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                    currentPageReportTemplate="Affichage de {first} à {last} sur {totalRecords} employés"
+                    stripedRows
+                    class="p-datatable-sm"
+                >
+                    <template #header>
+                        <div class="flex justify-between items-center py-4 px-6 bg-white/30">
+                            <span class="text-slate-800 font-black uppercase tracking-widest text-xs">Liste des employés</span>
+                            <IconField iconPosition="left">
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText
+                                    v-model="filters['global'].value"
+                                    placeholder="Recherche automatique..."
+                                    class="!rounded-2xl !bg-white/80 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
+                                />
+                            </IconField>
+                        </div>
+                    </template>
 
                 <Column
                     field="matricule"
@@ -400,61 +354,63 @@ const confirmDelete = (employee) => {
             :modal="true"
             :closable="true"
             @hide="closeDialog"
+            class="!rounded-[2.5rem] !bg-white/90 !backdrop-blur-xl !border-white/50 !shadow-2xl"
         >
             <div class="flex flex-col gap-4 pt-2">
                 <!-- Erreur globale -->
-                <Message v-if="form.hasErrors" severity="error">
+                <Message v-if="form.hasErrors" severity="error" class="!rounded-2xl">
                     Veuillez corriger les erreurs ci-dessous.
                 </Message>
 
                 <!-- Matricule — lecture seule en mode édition -->
                 <div v-if="isEditing" class="flex flex-col gap-1">
-                    <label class="font-semibold text-slate-500"
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"
                         >Matricule</label
                     >
                     <InputText
                         :value="form.matricule"
                         disabled
-                        class="bg-slate-100 cursor-not-allowed focus:!border-blue-700"
+                        class="!bg-slate-100/50 !rounded-xl !border-slate-100 !text-sm cursor-not-allowed"
                         fluid
                     />
-                    <small class="text-slate-400"
-                        >Le matricule est généré automatiquement et ne peut pas
-                        être modifié.</small
+                    <small class="text-[10px] text-slate-400 font-medium ml-1"
+                        >Le matricule est généré automatiquement.</small
                     >
                 </div>
 
                 <!-- Prénom / Nom -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
-                        <label class="font-semibold"
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"
                             >Prénom <span class="text-red-500">*</span></label
                         >
                         <InputText
                             v-model="form.first_name"
                             :invalid="!!form.errors.first_name"
                             placeholder="Prénom"
+                            class="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                             fluid
                         />
                         <small
                             v-if="form.errors.first_name"
-                            class="text-red-500"
+                            class="text-red-500 text-[10px] font-bold ml-1"
                             >{{ form.errors.first_name }}</small
                         >
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="font-semibold"
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"
                             >Nom <span class="text-red-500">*</span></label
                         >
                         <InputText
                             v-model="form.last_name"
                             :invalid="!!form.errors.last_name"
                             placeholder="Nom"
+                            class="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                             fluid
                         />
                         <small
                             v-if="form.errors.last_name"
-                            class="text-red-500"
+                            class="text-red-500 text-[10px] font-bold ml-1"
                             >{{ form.errors.last_name }}</small
                         >
                     </div>
@@ -463,24 +419,26 @@ const confirmDelete = (employee) => {
                 <!-- Email / Téléphone -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
-                        <label class="font-semibold"
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"
                             >Email <span class="text-red-500">*</span></label
                         >
                         <InputText
                             v-model="form.email"
                             :invalid="!!form.errors.email"
                             placeholder="email@exemple.com"
+                            class="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                             fluid
                         />
-                        <small v-if="form.errors.email" class="text-red-500">{{
+                        <small v-if="form.errors.email" class="text-red-500 text-[10px] font-bold ml-1">{{
                             form.errors.email
                         }}</small>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="font-semibold">Téléphone</label>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
                         <InputText
                             v-model="form.phone"
                             placeholder="+229 00 00 00 00"
+                            class="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                             fluid
                         />
                     </div>
@@ -488,7 +446,7 @@ const confirmDelete = (employee) => {
 
                 <!-- Date de naissance -->
                 <div class="flex flex-col gap-1">
-                    <label class="font-semibold"
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"
                         >Date de naissance
                         <span class="text-red-500">*</span></label
                     >
@@ -498,28 +456,29 @@ const confirmDelete = (employee) => {
                         dateFormat="dd/mm/yy"
                         :maxDate="new Date()"
                         showIcon
+                        inputClass="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                         fluid
                     />
-                    <small v-if="form.errors.birth_date" class="text-red-500">{{
+                    <small v-if="form.errors.birth_date" class="text-red-500 text-[10px] font-bold ml-1">{{
                         form.errors.birth_date
                     }}</small>
                 </div>
 
                 <!-- Adresse -->
                 <div class="flex flex-col gap-1">
-                    <label class="font-semibold">Adresse</label>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Adresse</label>
                     <InputText
                         v-model="form.address"
                         placeholder="Adresse complète"
                         fluid
-                        class="focus:!border-blue-700"
+                        class="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                     />
                 </div>
 
                 <!-- Poste / Statut -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
-                        <label class="font-semibold"
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"
                             >Poste <span class="text-red-500">*</span></label
                         >
                         <Select
@@ -529,16 +488,17 @@ const confirmDelete = (employee) => {
                             optionValue="id"
                             placeholder="Sélectionner un poste"
                             :invalid="!!form.errors.position_id"
+                            class="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                             fluid
                         />
                         <small
                             v-if="form.errors.position_id"
-                            class="text-red-500"
+                            class="text-red-500 text-[10px] font-bold ml-1"
                             >{{ form.errors.position_id }}</small
                         >
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="font-semibold"
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"
                             >Statut <span class="text-red-500">*</span></label
                         >
                         <Select
@@ -548,9 +508,10 @@ const confirmDelete = (employee) => {
                             optionValue="value"
                             placeholder="Sélectionner un statut"
                             :invalid="!!form.errors.status"
+                            class="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                             fluid
                         />
-                        <small v-if="form.errors.status" class="text-red-500">{{
+                        <small v-if="form.errors.status" class="text-red-500 text-[10px] font-bold ml-1">{{
                             form.errors.status
                         }}</small>
                     </div>
@@ -558,7 +519,7 @@ const confirmDelete = (employee) => {
 
                 <!-- Salaire de base -->
                 <div class="flex flex-col gap-1">
-                    <label class="font-semibold"
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"
                         >Salaire de base
                         <span class="text-red-500">*</span></label
                     >
@@ -566,52 +527,35 @@ const confirmDelete = (employee) => {
                         v-model="form.salary_base"
                         :invalid="!!form.errors.salary_base"
                         :min="0"
+                        class="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
+                        inputClass="!rounded-xl !bg-white/50 !border-slate-100 !text-sm focus:!ring-2 focus:!ring-blue-500/20"
                         fluid
                     />
                     <small
                         v-if="form.errors.salary_base"
-                        class="text-red-500"
+                        class="text-red-500 text-[10px] font-bold ml-1"
                         >{{ form.errors.salary_base }}</small
-                    >
-                </div>
-
-                <!-- User ID — optionnel -->
-                <div class="flex flex-col gap-1">
-                    <label class="font-semibold text-slate-500">
-                        ID Compte utilisateur
-                        <span class="text-xs font-normal text-slate-400"
-                            >(optionnel)</span
-                        >
-                    </label>
-                    <InputNumber
-                        v-model="form.user_id"
-                        :min="1"
-                        placeholder="Laisser vide si aucun compte lié"
-                        fluid
-                    />
-                    <small class="text-slate-400"
-                        >Lier cet employé à un compte utilisateur
-                        existant.</small
                     >
                 </div>
             </div>
 
             <!-- FOOTER -->
             <template #footer>
-                <Button
-                    label="Annuler"
-                    icon="pi pi-times"
-                    severity="secondary"
-                    variant="text"
-                    @click="closeDialog"
-                />
-                <Button
-                    :label="isEditing ? 'Mettre à jour' : 'Créer'"
-                    icon="pi pi-check"
-                    class="!bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-0"
-                    :loading="form.processing"
-                    @click="submitForm"
-                />
+                <div class="flex gap-3 mt-4">
+                    <Button
+                        label="Annuler"
+                        icon="pi pi-times"
+                        class="flex-1 !bg-white !text-slate-500 !border-slate-100 !rounded-xl !py-3 !font-bold"
+                        @click="closeDialog"
+                    />
+                    <Button
+                        :label="isEditing ? 'Mettre à jour' : 'Créer l\'employé'"
+                        icon="pi pi-check"
+                        class="flex-1 !bg-gradient-to-r !from-blue-600 !to-indigo-600 !border-0 !rounded-xl !py-3 !font-bold !text-white shadow-lg shadow-blue-500/20"
+                        :loading="form.processing"
+                        @click="submitForm"
+                    />
+                </div>
             </template>
         </Dialog>
     </AppLayout>

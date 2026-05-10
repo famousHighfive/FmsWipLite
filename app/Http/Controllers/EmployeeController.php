@@ -19,33 +19,14 @@ class EmployeeController extends Controller
     {
         $query = Employee::with('position', 'user');
 
-        // Recherche globale
-        if ($request->filled('search')) {
-            $query->search($request->input('search'));
-        }
-
-        // Filtre par statut
-        if ($request->filled('status')) {
-            $query->status($request->input('status'));
-        }
-
-        // Filtre par poste
-        if ($request->filled('position_id')) {
-            $query->byPosition($request->input('position_id'));
-        }
-        $sortField = $request->input('sort_field', 'last_name');
-        $sortOrder = $request->input('sort_order', 'asc');
-        $perPage = $request->input('per_page', 10);
-
-        $employees = $query
-            ->orderBy($sortField, $sortOrder)
-            ->paginate($perPage)
-            ->withQueryString();
+        // On récupère TOUS les employés pour le filtrage automatique côté client (PrimeVue)
+        // comme demandé par l'utilisateur pour éviter les requêtes à chaque caractère.
+        $employees = $query->orderBy('last_name', 'asc')->get();
 
         return Inertia::render('Employees/Index', [
             'employees' => $employees,
             'positions' => Position::all(),
-            'filters'   => $request->only('search', 'status', 'position_id'),
+            'filters'   => $request->only('status', 'position_id'),
         ]);
     }
 

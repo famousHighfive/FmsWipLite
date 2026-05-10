@@ -5,9 +5,18 @@ import { GitBranch, User, Megaphone, Calendar } from 'lucide-vue-next';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import { ref } from 'vue';
+import { FilterMatchMode } from '@primevue/core/api';
 
 defineProps({
     assignments: Array
+});
+
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 </script>
 
@@ -28,7 +37,23 @@ defineProps({
                     Liste des affectations
                 </h3>
                 
-                <DataTable :value="assignments" class="p-datatable-sm" paginator :rows="15">
+                <DataTable 
+                    :value="assignments" 
+                    v-model:filters="filters"
+                    :globalFilterFields="['employee.user.name', 'campaign.name', 'position.name', 'manager.user.name', 'status']"
+                    class="p-datatable-sm" 
+                    paginator :rows="15"
+                >
+                    <template #header>
+                        <div class="flex justify-end mb-4">
+                            <IconField iconPosition="left">
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText v-model="filters['global'].value" placeholder="Filtrage automatique..." class="!rounded-xl !bg-slate-50/50" />
+                            </IconField>
+                        </div>
+                    </template>
                     <Column header="Employé" sortable field="employee.user.name">
                         <template #body="{ data }">
                             <div class="flex items-center gap-3">
