@@ -8,44 +8,44 @@ use App\Models\Employee;
 use App\Models\Timesheet;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class TimesheetController extends Controller
 {
     /**
-     * Affiche la liste des feuilles de temps (Calendrier).
+     * AFFICHAGE DU CALENDRIER (INDEX)
+     * Récupère et filtre les feuilles de temps selon les droits d'accès du rôle utilisateur.
      */
     public function index()
     {
         $user = auth()->user();
         $employee = $user->employee;
-        $role = strtoupper($user->role->name); // Normalisation en majuscules
+        $role = strtoupper($user->role->name); // Normalisation pour faciliter les tests
 
-        // Préparation de la requête de base
+        // Chargement des relations nécessaires pour éviter le problème "N+1 queries"
         $query = Timesheet::with(['employee', 'validator', 'entries']);
 
-        // --- LOGIQUE DE FILTRAGE PAR RÔLE ---
-
+        // --- FILTRAGE DE SÉCURITÉ ---
         if ($role === 'ADMIN') {
-            // L'ADMIN voit TOUT le monde sans exception
-            // On ne rajoute aucun "where", la requête reste brute
-        } elseif ($role === 'SUP' || $role === 'CP') {
-            // Sécurité : Si SUP ou CP n'a pas de profil employé, il ne voit rien (évite le crash ID on null)
-            if (! $employee) {
+            // L'ADMIN voit l'intégralité des données sans restriction
+        } 
+        elseif ($role === 'SUP' || $role === 'CP') {
+            // Sécurité : Si le manager n'a pas de profil employé, on retourne une liste vide
+            if (!$employee) {
                 return Inertia::render('Timesheets/Calendar', ['calendar' => []]);
             }
 
-            // Filtrage par affectation directe
+            // Filtre : Un manager ne voit que les employés qui lui sont assignés activement
             $query->whereHas('employee.assignments', function ($q) use ($employee) {
                 $q->where('manager_id', $employee->id)
-                    ->where('status', 'actif');
+                  ->where('status', 'actif');
             });
-        } elseif ($role === 'TC') {
-            if (! $employee) {
+        } 
+        elseif ($role === 'TC') {
+            if (!$employee) {
                 return Inertia::render('Timesheets/Calendar', ['calendar' => []]);
             }
-            // Le TC ne voit que lui-même
+            // Filtre : Le Téléconseiller ne voit que ses propres pointages
             $query->where('employee_id', $employee->id);
         }
 
@@ -55,42 +55,36 @@ class TimesheetController extends Controller
     }
 
     /**
-     * Affiche le formulaire de création.
-     */
-    public function create()
-    {
-        return Inertia::render('Timesheets/Create');
-    }
-
-    /**
-     * Enregistre une nouvelle ressource.
+     * CRÉATION D'UN NOUVEL EMPLOYÉ ET INITIALISATION
+     * Crée le profil, l'assignation hiérarchique et la première feuille de temps.
      */
     public function store(Request $request)
     {
-        // 1. Créer l'employé
+        // 1. Création de la fiche employé
         $employee = Employee::create($request->all());
 
-        // 2. L'assigner à un Manager (SUP/CP) via ta table assignments
+        // 2. Assignation automatique au manager connecté (SUP/CP)
         Assignment::create([
             'employee_id' => $employee->id,
-            'manager_id' => auth()->user()->employee->id,
-            'start_date' => now(),
-            'status' => 'actif',
+            'manager_id'  => auth()->user()->employee->id,
+            'start_date'  => now(),
+            'status'      => 'actif',
         ]);
 
-        // 3. Créer sa feuille de route immédiatement pour qu'il apparaisse au calendrier
+        // 3. Initialisation immédiate de la feuille de temps pour la semaine en cours
         Timesheet::create([
-            'employee_id' => $employee->id,
+            'employee_id'  => $employee->id,
             'period_start' => Carbon::now()->startOfWeek(),
-            'period_end' => Carbon::now()->endOfWeek(),
-            'status' => 'brouillon',
+            'period_end'   => Carbon::now()->endOfWeek(),
+            'status'       => 'brouillon',
         ]);
 
         return redirect()->route('calendar.index');
     }
 
     /**
-     * Affiche une ressource spécifique.
+     * CONSULTATION DÉTAILLÉE
+     * Affiche les détails complets d'une semaine de pointage spécifique.
      */
     public function show(Timesheet $timesheet)
     {
@@ -100,62 +94,43 @@ class TimesheetController extends Controller
     }
 
     /**
-     * Affiche le formulaire d'édition.
+     * VALIDATION ET VERROUILLAGE (SUBMIT)
+     * Marque la feuille comme terminée, ce qui bloque toute modification ultérieure.
      */
-    public function edit(Timesheet $timesheet)
+    public function submit(Timesheet $timesheet)
     {
-        return Inertia::render('Timesheets/Edit', [
-            'timesheet' => $timesheet,
-        ]);
-    }
+        $user = auth()->user();
+        $role = strtoupper($user->role->name);
+        $employee = $user->employee;
 
-    /**
-     * Met à jour la ressource.
-     */
-    public function update(UpdateTimesheetRequest $request, Timesheet $timesheet) {}
+        // Préparation des données de validation
+        $updateData = [
+            'status'       => 'soumis',
+            'validated_at' => now(),
+        ];
 
-    /**
-     * Supprime la ressource.
-     */
-    public function destroy(Timesheet $timesheet) {}
-
-    /**
-     * Soumet définitivement la feuille de temps (Verrouillage).
-     */
-    /**
-     * Validation finale par le Chef de Plateau (CP)
-     */
-public function submit(Timesheet $timesheet)
-{
-    $user = auth()->user();
-    $role = strtoupper($user->role->name);
-    $employee = $user->employee;
-
-    // 1. On prépare les données de mise à jour
-    $updateData = [
-        'status' => 'soumis',
-        'validated_at' => now(),
-    ];
-
-    // 2. Logique conditionnelle pour le valideur
-    if ($role === 'ADMIN') {
-        // L'admin valide sans être forcément un employé
-        // On peut laisser validated_by à null ou mettre l'ID de l'employé s'il existe
-        $updateData['validated_by'] = $employee ? $employee->id : null;
-    } else {
-        // Pour les autres (CP), le profil employé est obligatoire
-        if (!$employee) {
-            return back()->withErrors(['message' => 'Profil employé manquant pour valider.']);
+        // --- ATTRIBUTION DU VALIDEUR ---
+        if ($role === 'ADMIN') {
+            // L'administrateur peut valider sans être lui-même un employé
+            $updateData['validated_by'] = $employee ? $employee->id : null;
+        } 
+        else {
+            // Un Chef de Plateau (CP) doit obligatoirement avoir un profil employé pour valider
+            if (!$employee) {
+                return back()->withErrors(['message' => 'Profil employé manquant pour valider.']);
+            }
+            $updateData['validated_by'] = $employee->id;
         }
-        $updateData['validated_by'] = $employee->id;
+
+        // Exécution du verrouillage
+        $timesheet->update($updateData);
+
+        return back(); // Retourne sur la page actuelle avec les données fraîches
     }
 
-    // 3. Exécution de la mise à jour
-    $timesheet->update($updateData);
-
-    return back();
-}
-
-
-
+   
+    public function create() { return Inertia::render('Timesheets/Create'); }
+    public function edit(Timesheet $timesheet) { }
+    public function update(UpdateTimesheetRequest $request, Timesheet $timesheet) { }
+    public function destroy(Timesheet $timesheet) {  }
 }

@@ -5,90 +5,112 @@ import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Dialog from "primevue/dialog";
 import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import IconField from 'primevue/iconfield';
-import InputIcon from 'primevue/inputicon';
+import { useToast } from "primevue/usetoast";
+import Toast from "primevue/toast";
 import TimesCard from "./TimesCard.vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import AppLayout from "@/Layouts/AppLayout.vue";
 import { FilterMatchMode } from '@primevue/core/api';
 
-const props = defineProps({
-  calendar: Array,
-});
+const toast = useToast();
+const props = defineProps({ calendar: Array });
 
-// --- SÉLECTION MULTIPLE & PAGINATION ---
+// --- ÉTATS RÉACTIFS ---
+ // Stocke les employés cochés dans le tableau
 const selectedEmployees = ref([]);
-const rows = ref(5); 
+      // Nombre de lignes affichées par page
+const rows = ref(5);
+   // Contrôle l'ouverture du formulaire de saisie
+const displayModal = ref(false)
+ // Contrôle l'ouverture du dialogue de clôture
+const showConfirmDialog = ref(false);
+// Données envoyées au composant TimesCard
+const selectedData = ref(null);    
+// Données envoyées au composant ConfirmDialog
+const selectedForSubmit = ref(null); 
 
-// --- FILTRAGE AUTOMATIQUE PRIME VUE ---
-const filters = ref({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-});
-
-// --- GESTION DES RÔLES ---
+// --- GESTION DES UTILISATEURS ---
 const user = computed(() => usePage().props.auth.user);
+// Normalise le rôle en minuscules (ex: 'ADMIN' -> 'admin') pour faciliter les comparaisons
 const role = computed(() => user.value?.role?.name?.toLowerCase() || 'tc');
 
-// --- CALCUL DYNAMIQUE DE LA PÉRIODE ---
+/**
+ * GÉNÉRATION DE LA PÉRIODE HEBDOMADAIRE
+ * Calcule dynamiquement chaque jour entre la date de début et de fin du calendrier.
+ */
 const periodDates = computed(() => {
-  if (!props.calendar?.length) return [];
-  const start = new Date(props.calendar[0].period_start);
-  const end = new Date(props.calendar[0].period_end);
-  const dates = [];
-  let current = new Date(start);
-  while (current <= end) {
-    dates.push(new Date(current).toISOString().split("T")[0]);
-    current.setDate(current.getDate() + 1);
-  }
-  return dates;
+    if (!props.calendar?.length) return [];
+    const start = new Date(props.calendar[0].period_start);
+    const end = new Date(props.calendar[0].period_end);
+    const dates = [];
+    let current = new Date(start);
+
+    while (current <= end) {
+        // Ajoute la date formatée YYYY-MM-DD au tableau
+        dates.push(new Date(current).toISOString().split("T")[0]);
+        // Passe au jour suivant
+        current.setDate(current.getDate() + 1);
+    }
+    return dates;
 });
 
-// --- UTILITAIRES D'AFFICHAGE ---
+/**
+ * FORMATAGE DES EN-TÊTES
+ * Transforme une date technique en format lisible (ex: "lun. 20").
+ */
 const formatHeader = (d) => new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric" }).format(new Date(d));
 
+/**
+ * RÉCUPÉRATION D'UNE ENTRÉE DE POINTAGE
+ * Vérifie si un employé possède des heures enregistrées pour une date précise.
+ */
 const getEntry = (entries, date) => {
-  const found = entries?.find(e => e.date.startsWith(date));
-  return found ? { ...found, is_empty: false } : { is_empty: true };
+    // On compare le début de la string date pour éviter les problèmes de format ISO
+    const found = entries?.find(e => e.date.startsWith(date));
+    return found ? { ...found, is_empty: false } : { is_empty: true };
 };
 
-// --- LOGIQUE DES COULEURS ---
+/**
+ * LOGIQUE VISUELLE DES CELLULES
+ * Définit la couleur de fond de la case en fonction du statut et du remplissage.
+ */
 const getCellClass = (timesheet, date) => {
     const entry = getEntry(timesheet.entries, date);
-    if (entry.is_empty) return 'bg-red-50 border-red-200 text-red-700';
-
+    
+    // 1. Si aucune donnée : Rouge (Absent)
+    if (entry.is_empty) return 'bg-red-50 border-red-200 text-red-700'; 
+    // 2. Si heures saisies < heures prévues : Orange (Incomplet)
     if (parseFloat(entry.total_hours) < parseFloat(entry.planned_hours)) {
         return 'bg-orange-50 border-orange-200 text-orange-700';
     }
-
+    // 3. Si la semaine est validée : Émeraude (Verrouillé)
     if (timesheet.status === 'soumis') return 'bg-emerald-100 border-emerald-300 text-emerald-800 font-bold';
+    
+    // 4. Par défaut : Vert (Conforme)
     return 'bg-green-50 border-green-200 text-green-800';
 };
 
-const getStatusBadgeClass = (status) => {
-    if (status === 'soumis') return 'bg-emerald-600 text-white';
-    if (status === 'valide') return 'bg-green-500 text-white';
-    return 'bg-gray-400 text-white';
-};
-
-// --- GESTION DES MODALS ---
-const displayModal = ref(false);
-const showConfirmDialog = ref(false);
-const selectedData = ref(null);
-const selectedForSubmit = ref(null);
-
+/**
+ * OUVERTURE DU FORMULAIRE INDIVIDUEL
+ * Prépare les données de l'employé et du jour sélectionné avant d'ouvrir le modal.
+ */
 const openTimeCard = (timesheet, date) => {
-  selectedData.value = {
-    timesheet_id: timesheet.id,
-    status: timesheet.status,
-    role: role.value,
-    employee_name: `${timesheet.employee.first_name} ${timesheet.employee.last_name}`,
-    date: date,
-    entry: timesheet.entries.find(e => e.date.startsWith(date)) || null
-  };
-  displayModal.value = true;
+    selectedData.value = {
+        timesheet_id: timesheet.id,
+        status: timesheet.status,
+        role: role.value,
+        employee_name: `${timesheet.employee.first_name} ${timesheet.employee.last_name}`,
+        date: date,
+        // On passe l'entrée existante si elle existe, sinon null
+        entry: timesheet.entries.find(e => e.date.startsWith(date)) || null
+    };
+    displayModal.value = true;
 };
 
+/**
+ * OUVERTURE DU DIALOGUE DE CLÔTURE
+ * Prépare l'ID de la feuille de temps pour la soumission finale.
+ */
 const openConfirm = (timesheet) => {
     selectedForSubmit.value = { 
         id: timesheet.id, 
@@ -97,8 +119,27 @@ const openConfirm = (timesheet) => {
     showConfirmDialog.value = true;
 };
 
+/**
+ * GESTION DE LA SAISIE GROUPÉE (BULK)
+ * Vérifie l'éligibilité de la sélection avant d'ouvrir le mode multiple.
+ */
 const openBulkEdit = () => {
     if (selectedEmployees.value.length === 0) return;
+
+    // Sécurité : Vérifie si un employé de la sélection est déjà verrouillé (soumis)
+    const hasSubmitted = selectedEmployees.value.some(emp => emp.status === 'soumis');
+    
+    if (hasSubmitted) {
+        toast.add({ 
+            severity: 'error', 
+            summary: 'Action impossible', 
+            detail: 'Certains employés sélectionnés sont déjà en statut soumis.', 
+            life: 5000 
+        });
+        return; 
+    }
+
+    // Préparation des données pour plusieurs IDs simultanés
     selectedData.value = {
         isBulk: true,
         timesheet_ids: selectedEmployees.value.map(item => item.id),
@@ -106,171 +147,214 @@ const openBulkEdit = () => {
         all_dates: periodDates.value,
         role: role.value,
         status: 'brouillon',
-        timesheet_id: selectedEmployees.value[0].id 
+        timesheet_id: selectedEmployees.value[0].id // ID pivot pour le formulaire
     };
     displayModal.value = true;
 };
 
-// --- CALCUL DES TOTALS ---
+/**
+ * CALCUL DES TOTALS HEBDOMADAIRES
+ * Additionne toutes les heures réelles et prévues de la semaine pour un employé.
+ */
 const getTotalsData = (timesheet) => {
     if (!timesheet?.entries?.length) return { worked: 0, planned: 0 };
-
+    
     return timesheet.entries.reduce((acc, entry) => {
-        // parseFloat sécurisé avec repli à 0
         const worked = parseFloat(entry.total_hours) || 0;
         const planned = parseFloat(entry.planned_hours) || 0;
-        
-        return {
-            worked: acc.worked + worked,
-            planned: acc.planned + planned
-        };
+        return { worked: acc.worked + worked, planned: acc.planned + planned };
     }, { worked: 0, planned: 0 });
 };
-
 </script>
+
 <template>
-  <Head title="Calendrier de Pointage" />
-  <AppLayout>
-    <div class="p-6 bg-[#fcfdfe] min-h-screen"> <div class="flex justify-between items-center mb-6">
-        <div>
-          <h1 class="text-2xl font-black text-slate-800 uppercase tracking-tighter">Gestion des Flux</h1>
-          <p class="text-slate-400 text-sm">Suivi hebdomadaire des présences</p>
+    <!-- SEO et Notifications -->
+    <Head title="Calendrier de Pointage" />
+    <Toast />
+
+    <AppLayout>
+        <!-- Conteneur Principal : Fond gris perle très doux -->
+        <div class="p-8 bg-[#f8fafc] min-h-screen">
+            
+            <!-- SECTION EN-TÊTE : Titre et Actions -->
+            <div class="flex justify-between items-end mb-8">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tighter leading-none">
+                        Gestion des Flux
+                    </h1>
+                    <p class="text-slate-500 text-sm mt-2 font-medium italic">
+                        Suivi hebdomadaire des présences et pointages
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    <Button v-if="selectedEmployees.length > 0" 
+                            label="Saisie Groupée" 
+                            icon="pi pi-users" 
+                            class="p-button-raised p-button-help p-button-sm font-bold border-0 shadow-lg shadow-purple-200/50" 
+                            @click="openBulkEdit" />
+                    
+                    <Button label="Nouveau Téléconseiller" 
+                            icon="pi pi-user-plus" 
+                            class="p-button-raised p-button-primary p-button-sm font-bold border-0 shadow-lg shadow-blue-200/50" 
+                            @click="router.visit('/employees/create')" />
+                </div>
+            </div>
+
+            <!-- TABLEAU : Blanc pur, ombres diffuses et coins arrondis -->
+            <DataTable 
+                :value="calendar" 
+                v-model:selection="selectedEmployees" 
+                :paginator="true" 
+                :rows="rows" 
+                dataKey="id" 
+                scrollable 
+                class="custom-datatable overflow-hidden rounded-3xl border-0 bg-white shadow-2xl shadow-slate-200/40"
+            >
+                <!-- Colonne de Sélection (Blanche) -->
+                <Column selectionMode="multiple" 
+                        headerStyle="background-color: #ffffff; width: 3rem;" 
+                        class="!bg-white border-b border-slate-50" 
+                        frozen 
+                        :disabledSelection="data => data.status === 'soumis'">
+                </Column>
+                
+                <!-- Colonne Employé (Forcée en blanc même si figée) -->
+                <Column frozen 
+                        header="Collaborateurs" 
+                        class="border-b border-slate-50 !bg-white" 
+                        headerStyle="background: #ffffff;"
+                        style="min-width: 280px">
+                    <template #body="{ data }">
+                        <div class="flex flex-col py-3 px-2 bg-white">
+                            <span class="font-bold text-slate-800 text-sm tracking-tight capitalize">
+                                {{ data.employee.first_name }} {{ data.employee.last_name }}
+                            </span>
+                            <div class="flex items-center gap-2 mt-1.5">
+                                <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[9px] font-bold rounded-md uppercase border border-slate-200">
+                                    MAT: {{ data.employee.matricule }}
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-medium">
+                                    Resp: {{ data.validator?.first_name || 'N/A' }}
+                                </span>
+                            </div>
+                        </div>
+                    </template>
+                </Column>
+
+                <!-- Colonnes jours (Cellules colorées harmonieuses) -->
+                <Column v-for="date in periodDates" :key="date" :header="formatHeader(date)" class="text-center border-b border-slate-50 bg-white">
+                    <template #body="{ data }">
+                        <div @click="openTimeCard(data, date)" 
+                             :class="[
+                                getCellClass(data, date),
+                                'm-1.5 p-3 rounded-2xl border cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 active:scale-95 flex flex-col items-center justify-center min-h-[75px] min-w-[75px] relative group'
+                             ]">
+                            <span class="text-[7px] font-black uppercase tracking-widest mb-1 opacity-50">{{ data.status }}</span>
+                            
+                            <div v-if="!getEntry(data.entries, date).is_empty" class="flex items-baseline">
+                                <span class="text-sm font-black tracking-tighter">{{ getEntry(data.entries, date).total_hours }}</span>
+                                <span class="text-[9px] ml-0.5 font-bold italic opacity-70">h</span>
+                            </div>
+                            
+                            <div v-else class="text-[10px] font-bold opacity-30 italic">--:--</div>
+                        </div>
+                    </template>
+                </Column>
+
+                <!-- Résumé Totaux -->
+                <Column header="Cumul R/P" class="text-center border-b border-slate-50 bg-[#fafbfc]" style="min-width: 140px">
+                    <template #body="{ data }">
+                        <div class="flex items-center justify-center py-2 px-3 bg-white rounded-xl border border-slate-100 shadow-sm mx-2">
+                            <span :class="[
+                                getTotalsData(data).worked >= getTotalsData(data).planned ? 'text-emerald-500' : 'text-rose-500',
+                                'text-lg font-black tracking-tighter'
+                            ]">
+                                {{ getTotalsData(data).worked.toFixed(1) }}
+                            </span>
+                            <span class="mx-1 text-slate-200 font-light text-xl">/</span>
+                            <span class="text-[11px] font-bold text-slate-400 self-end mb-1">
+                                {{ getTotalsData(data).planned.toFixed(1) }}h
+                            </span>
+                        </div>
+                    </template>
+                </Column>
+
+                <!-- Actions de validation -->
+                <Column header="Validation" class="text-center border-b border-slate-50 bg-white" style="min-width: 90px">
+                    <template #body="{ data }">
+                        <button v-if="(role === 'cp' || role === 'admin') && data.status !== 'soumis'" 
+                                @click="openConfirm(data)" 
+                                class="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm border border-blue-100">
+                            <i class="pi pi-send text-sm"></i>
+                        </button>
+                        
+                        <div v-else-if="data.status === 'soumis'" 
+                             class="w-10 h-10 bg-emerald-50 text-emerald-500 flex items-center justify-center rounded-full border border-emerald-100 mx-auto">
+                            <i class="pi pi-check-circle text-lg"></i>
+                        </div>
+                    </template>
+                </Column>
+            </DataTable>
         </div>
-        <div class="flex gap-3">
-          <Button v-if="selectedEmployees.length > 0" label="Saisie Groupée" icon="pi pi-users" class="p-button-help p-button-sm shadow-sm" @click="openBulkEdit" />
-          <Button label="Nouveau Téléconseiller" icon="pi pi-user-plus" class="p-button-primary p-button-sm shadow-sm" @click="router.visit('/employees/create')" />
-        </div>
-      </div>
 
-      <DataTable 
-        :value="calendar" 
-        v-model:filters="filters"
-        :globalFilterFields="['employee.first_name', 'employee.last_name', 'employee.matricule', 'status']"
-        v-model:selection="selectedEmployees" 
-        :paginator="true" 
-        :rows="rows" 
-        dataKey="id" 
-        scrollable 
-        class="p-datatable-sm custom-table border-0 rounded-xl overflow-hidden shadow-xl shadow-slate-200/50"
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
-        currentPageReportTemplate="{first}-{last} sur {totalRecords}"
-      >
-        <template #header>
-            <div class="flex justify-end mb-2">
-                <IconField iconPosition="left">
-                    <InputIcon>
-                        <i class="pi pi-search" />
-                    </InputIcon>
-                    <InputText v-model="filters['global'].value" placeholder="Rechercher un agent..." class="!rounded-xl !bg-white/80" />
-                </IconField>
-            </div>
-        </template>
-        <Column selectionMode="multiple" headerStyle="width: 3rem; background: #f8fafc" frozen></Column>
-        
-        <Column frozen header="Employés" style="min-width: 250px">
-          <template #body="{ data }">
-            <div class="flex flex-col py-2 px-1">
-              <span class="font-bold text-slate-700 text-sm">{{ data.employee.first_name }} {{ data.employee.last_name }}</span>
-              <div class="flex gap-2 mt-1">
-                <small class="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-medium">ID: {{ data.employee.matricule }}</small>
-                <small class="text-[10px] text-slate-400 self-center">Par : {{ data.validator?.first_name || 'N/A' }}</small>
-              </div>
-            </div>
-          </template>
-        </Column>
+        <!-- MODALS -->
+        <Dialog v-model:visible="displayModal" header="Détails du Pointage" :modal="true" :style="{ width: '400px' }" class="white-modal">
+            <TimesCard v-if="displayModal" :data="selectedData" @close="displayModal = false" />
+        </Dialog>
 
-        <Column v-for="date in periodDates" :key="date" :header="formatHeader(date)" class="text-center">
-          <template #body="{ data }">
-            <div @click="openTimeCard(data, date)" 
-                 :class="getCellClass(data, date)" 
-                 class="m-1 p-2 border-2 rounded-lg cursor-pointer hover:scale-[1.02] active:scale-95 transition-all flex flex-col items-center justify-center min-h-[65px] group">
-              <span class="text-[8px] font-bold uppercase tracking-widest opacity-60 group-hover:opacity-100">{{ data.status }}</span>
-              <div v-if="!getEntry(data.entries, date).is_empty" class="text-sm font-black mt-0.5">
-                {{ getEntry(data.entries, date).total_hours }}<span class="text-[10px] ml-0.5">h</span>
-              </div>
-              <div v-else class="text-[9px] font-bold opacity-40 italic uppercase tracking-tighter">Absent</div>
-            </div>
-          </template>
-        </Column>
-
-        <Column header="Total (R/P)" class="text-center" style="min-width: 130px">
-          <template #body="{ data }">
-            <div class="total-container flex items-center justify-center gap-1" :class="getTotalsData(data).worked >= getTotalsData(data).planned ? 'text-emerald-600' : 'text-rose-500'">
-              <span class="real-hours text-xl font-black italic"> {{ getTotalsData(data).worked.toFixed(1) }} </span>
-              <span class="separator">/</span>
-              <span class="planned-hours text-[11px] font-bold self-end mb-1 text-slate-400"> {{ getTotalsData(data).planned.toFixed(1) }}h </span>
-            </div>
-          </template>
-        </Column>
-
-        <Column header="Action" class="text-center" style="min-width: 80px">
-          <template #body="{ data }">
-            <button v-if="(role === 'cp' || role === 'admin') && data.status !== 'soumis'" @click="openConfirm(data)" class="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </button>
-            <div v-if="data.status === 'soumis'" class="text-emerald-400 bg-emerald-50 w-8 h-8 flex items-center justify-center rounded-full mx-auto">
-              <i class="pi pi-lock text-sm"></i>
-            </div>
-          </template>
-        </Column>
-      </DataTable>
-    </div>
-
-    <Dialog v-model:visible="displayModal" :header="'Pointage'" :modal="true" :style="{ width: '400px' }">
-      <TimesCard v-if="displayModal" :data="selectedData" @close="displayModal = false" />
-    </Dialog>
-
-    <ConfirmDialog v-model:visible="showConfirmDialog" :timesheetId="selectedForSubmit?.id" :employeeName="selectedForSubmit?.name" />
-  </AppLayout>
+        <ConfirmDialog v-model:visible="showConfirmDialog" :timesheetId="selectedForSubmit?.id" :employeeName="selectedForSubmit?.name" />
+    </AppLayout>
 </template>
 
 <style scoped>
-/* Suppression du fond noir et uniformisation */
-.custom-table :deep(.p-datatable-thead > tr > th) {
-  background-color: #f8fafc !important;
-  color: #64748b !important;
-  font-size: 10px !important;
-  border-bottom: 2px solid #f1f5f9 !important;
-  padding: 16px 8px !important;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+/* Nettoyage global du tableau PrimeVue */
+.custom-datatable :deep(.p-datatable-wrapper) {
+    background-color: #ffffff !important;
 }
 
-.custom-table :deep(.p-datatable-tbody > tr) {
-  background-color: #ffffff !important;
-  transition: background-color 0.2s;
+/* Force l'en-tête en blanc pur */
+.custom-datatable :deep(.p-datatable-thead > tr > th) {
+    background-color: #ffffff !important;
+    color: #64748b !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 20px 15px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
 }
 
-.custom-table :deep(.p-datatable-tbody > tr:hover) {
-  background-color: #fcfdfe !important;
+/* Force les colonnes figées (Collaborateurs) en blanc */
+.custom-datatable :deep(.p-datatable-tbody > tr > td.p-frozen-column),
+.custom-datatable :deep(.p-datatable-thead > tr > th.p-frozen-column) {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
 }
 
-.custom-table :deep(.p-datatable-tbody > tr > td) {
-  border-bottom: 1px solid #f1f5f9 !important;
-  padding: 8px !important;
+/* Style de la pagination blanche */
+.custom-datatable :deep(.p-paginator) {
+    background-color: #ffffff !important;
+    border-top: 1px solid #f1f5f9 !important;
+    border-radius: 0 0 24px 24px !important;
+    padding: 15px !important;
 }
 
-.separator {
-  font-size: 24px;
-  font-weight: 200;
-  color: #cbd5e1;
-  transform: rotate(15deg); /* Ton style conservé */
-  display: inline-block;
-  margin: 0 2px;
+/* Harmonisation des lignes du tableau */
+.custom-datatable :deep(.p-datatable-tbody > tr) {
+    background-color: #ffffff !important;
+    color: #1e293b !important;
 }
 
-.real-hours { letter-spacing: -1.5px; }
-
-:deep(.p-paginator) { 
-  background: #ffffff !important;
-  border-top: 1px solid #f1f5f9 !important;
-  padding: 0.75rem !important;
-  color: #64748b !important;
-}
-
+/* Supprime les bordures et centrage */
 :deep(.p-column-header-content) {
-  justify-content: center;
+    justify-content: center !important;
+}
+
+/* Correction spécifique pour l'ombre de la colonne figée */
+.custom-datatable :deep(.p-datatable-tbody > tr > td.p-frozen-column) {
+    box-shadow: none !important;
+    border-right: 1px solid #f1f5f9 !important;
 }
 </style>
+
+
