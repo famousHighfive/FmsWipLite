@@ -25,14 +25,12 @@ const getStatusLabel = (status) => {
     <Head title="Historique des Plannings" />
 
     <AppLayout>
-        <template #header>
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800">Historique</h2>
-                    <p class="text-slate-500 text-sm">Suivez l'historique des modifications des plannings</p>
-                </div>
+        <div class="mb-8 flex justify-between items-center bg-white/50 backdrop-blur-sm p-6 rounded-[2rem] border border-white shadow-sm">
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Historique</h2>
+                <p class="text-blue-500/70 text-xs font-bold uppercase tracking-widest mt-1">Suivez l'historique des modifications des plannings</p>
             </div>
-        </template>
+        </div>
 
         <div class="py-8">
             <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6">

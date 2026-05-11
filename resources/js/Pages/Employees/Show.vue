@@ -63,12 +63,13 @@ const goBack = () => router.visit(route("employees.index"));
                         :severity="getStatusSeverity(employee.status)"
                         class="!rounded-lg !px-3 !py-1 text-xs font-bold uppercase"
                     />
-                    <Button
+                    <!-- <Button
                         icon="pi pi-history"
-                        label="Historique"
-                        class="!bg-white !border-slate-100 !text-slate-600 !rounded-xl !shadow-sm font-bold"
-                        @click="router.visit(route('employees.history', employee.id))"
-                    />
+                        label="Voir l'historique"
+                        variant="outlined"
+                        severity="info"
+                        @click="router.visit(route('employees.history', employee.id),)"
+                    /> -->
                 </div>
             </div>
 

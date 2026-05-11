@@ -14,7 +14,8 @@ class UserController extends Controller
     // use App\LogsActivity;
     public function index()
     {
-        $users = User::with('role')->paginate(10);
+        // On récupère TOUS les utilisateurs pour le filtrage automatique côté client (PrimeVue)
+        $users = User::with('role')->get();
         return Inertia::render('Users/Index', [
             'users' => $users
         ]);

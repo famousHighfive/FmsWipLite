@@ -26,6 +26,45 @@ class CampaignController extends Controller
         ]);
     }
 
+     /**
+     * Campagnes actives
+     */
+    public function active()
+    {
+        $campaigns = Campaign::withCount([
+            'assignments' => function ($query) {
+                $query->where('status', 'actif');
+            }
+        ])
+        ->where('status', 'active')
+        ->latest()
+        ->get();
+
+        return Inertia::render('Campaigns/ActiveCampaign', [
+            'campaigns' => $campaigns,
+        ]);
+    }
+
+    /**
+     * Campagnes inactives + terminées
+     */
+    public function inactive()
+    {
+        $campaigns = Campaign::withCount([
+            'assignments' => function ($query) {
+                $query->where('status', 'actif');
+            }
+        ])
+        ->whereIn('status', ['inactive'])
+        ->latest()
+        ->get();
+
+        return Inertia::render('Campaigns/InactiveCampaign', [
+            'campaigns' => $campaigns,
+        ]);
+    }
+
+
     /**
      * Formulaire de création (non utilisé avec le modal PrimeVue)
      */
@@ -135,10 +174,6 @@ class CampaignController extends Controller
      */
     public function changeStatus(Request $request, Campaign $campaign)
     {
-        // On ne réagit pas si la campagne est déjà terminée
-        if ($campaign->status === 'terminee') {
-            return redirect()->back()->with('error', 'Impossible de modifier le statut d\'une campagne terminée.');
-        }
 
         // Validation du nouveau statut
         $validated = $request->validate([
@@ -174,6 +209,8 @@ class CampaignController extends Controller
 
         // On ne supprime pas physiquement, on change le statut en 'terminee'
         $campaign->update(['status' => 'terminee']);
+
+        // je vais ecrire une methode pour liberer automatiquement toute les resources de cette campagnes
 
         // Enregistrement de la clôture (via bouton supprimer) dans l'historique
         ActivityLog::create([

@@ -52,33 +52,31 @@ const validateAll = () => {
     <Head title="Validation des Plannings" />
 
     <AppLayout>
-        <template #header>
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-black text-slate-800">Validation</h2>
-                    <p class="text-slate-500 text-sm">Validez les plannings en attente pour les rendre effectifs</p>
-                </div>
-
-                <div class="flex gap-3">
-                    <Button
-                        v-if="pendingAssignments.length > 0"
-                        @click="validateAll"
-                        class="!bg-blue-600 !border-none !rounded-xl !px-6 flex items-center gap-2"
-                    >
-                        <CheckCircle class="w-4 h-4 text-white" />
-                        <span class="font-bold text-white">Valider tout ({{ pendingAssignments.length }})</span>
-                    </Button>
-                    <Button
-                        v-if="selectedAssignments.length > 0"
-                        @click="bulkValidate"
-                        class="!bg-green-600 !border-none !rounded-xl !px-6 flex items-center gap-2"
-                    >
-                        <CheckCircle class="w-4 h-4 text-white" />
-                        <span class="font-bold text-white">Valider sélection ({{ selectedAssignments.length }})</span>
-                    </Button>
-                </div>
+        <div class="mb-8 flex justify-between items-center bg-white/50 backdrop-blur-sm p-6 rounded-[2rem] border border-white shadow-sm">
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Validation</h2>
+                <p class="text-blue-500/70 text-xs font-bold uppercase tracking-widest mt-1">Validez les plannings en attente pour les rendre effectifs</p>
             </div>
-        </template>
+
+            <div class="flex gap-3">
+                <Button
+                    v-if="pendingAssignments.length > 0"
+                    @click="validateAll"
+                    class="flex-shrink-0 !bg-blue-600 !border-none !rounded-2xl !px-8 !py-4 flex items-center gap-3 shadow-xl shadow-blue-500/20 hover:!bg-blue-700 hover:-translate-y-0.5 transition-all"
+                >
+                    <CheckCircle class="w-5 h-5 text-white" />
+                    <span class="font-black text-white text-sm uppercase tracking-wider">Valider tout ({{ pendingAssignments.length }})</span>
+                </Button>
+                <Button
+                    v-if="selectedAssignments.length > 0"
+                    @click="bulkValidate"
+                    class="flex-shrink-0 !bg-green-600 !border-none !rounded-2xl !px-8 !py-4 flex items-center gap-3 shadow-xl shadow-green-500/20 hover:!bg-green-700 hover:-translate-y-0.5 transition-all"
+                >
+                    <CheckCircle class="w-5 h-5 text-white" />
+                    <span class="font-black text-white text-sm uppercase tracking-wider">Valider sélection ({{ selectedAssignments.length }})</span>
+                </Button>
+            </div>
+        </div>
 
         <div class="py-8">
             <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6">

@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('assignment_id')->constrained('assignments')->onDelete('cascade');
             $table->foreignId('employee_id')->constrained('employees')->onDelete('cascade');
-            $table->foreignId('old_manager_id')->nullable()->constrained('users');
-            $table->foreignId('new_manager_id')->nullable()->constrained('users');
+            $table->foreignId('old_manager_id')->nullable()->constrained('employees');
+            $table->foreignId('new_manager_id')->nullable()->constrained('employees');
             $table->foreignId('old_campaign_id')->nullable()->constrained('campaigns');
             $table->foreignId('new_campaign_id')->nullable()->constrained('campaigns');
             $table->enum('action_type', ['assign', 'release', 'transfer']);

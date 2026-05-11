@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Assignment;
 use App\Models\AssignmentHistory;
-use App\Models\Employee;
 use App\Models\Campaign;
+use App\Models\Employee;
 use App\Models\Position;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+
 use Inertia\Inertia;
 
 class AssignmentController extends Controller
@@ -45,9 +47,62 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Enregistre une nouvelle affectation et crée une trace dans l'historique
+     * Affiche la vue hiérarchique des affectations
      */
-    public function store(Request $request)
+    public function hierarchy()
+    {
+        // On récupère toutes les campagnes actives avec leurs affectations imbriquées
+        // Campagne -> CP (manager_id null et position CP) -> SUP (manager_id CP) -> TC (manager_id SUP)
+        $hierarchy = Campaign::where('status', 'active')
+            ->with(['assignments' => function($query) {
+                $query->where('status', 'actif')
+                    ->with(['employee.position', 'position']);
+            }])
+            ->get()
+            ->map(function($campaign) {
+                // On structure les données pour le front-end
+                $assignments = $campaign->assignments;
+                
+                // 1. Trouver les Chefs de Plateau (CP) de la campagne
+                $cps = $assignments->filter(function($a) {
+                    return $a->position->code === 'CP';
+                })->map(function($cp) use ($assignments) {
+                    // 2. Pour chaque CP, trouver ses Superviseurs (SUP)
+                    $supervisors = $assignments->filter(function($a) use ($cp) {
+                        return $a->position->code === 'SUP' && $a->manager_id === $cp->employee_id;
+                    })->map(function($sup) use ($assignments) {
+                        // 3. Pour chaque SUP, trouver ses Téléconseillers (TC)
+                        $tcs = $assignments->filter(function($a) use ($sup) {
+                            return $a->position->code === 'TC' && $a->manager_id === $sup->employee_id;
+                        });
+                        
+                        $sup->teleconseillers = $tcs->values();
+                        return $sup;
+                    });
+                    
+                    $cp->supervisors = $supervisors->values();
+                    return $cp;
+                });
+
+                return [
+                    'id' => $campaign->id,
+                    'name' => $campaign->name,
+                    'status' => $campaign->status,
+                    'cps' => $cps->values()
+                ];
+            });
+
+        return Inertia::render('Assignments/Hierarchy', [
+            'hierarchy' => $hierarchy
+        ]);
+    }
+
+    /**
+     * =========================================================
+     * PAGE D'AFFECTATION DES SUPERVISEURS
+     * =========================================================
+     */
+    public function assignSUP()
     {
         $validated = $request->validate([
             'employee_id' => [
@@ -91,10 +146,13 @@ class AssignmentController extends Controller
         return redirect()->back()->with('success', 'Affectation créée avec succès.');
     }
 
+
     /**
-     * Gère la réaffectation (changement de manager) d'une ressource
+     * =========================================================
+     * AFFECTER UN CP À UNE CAMPAGNE
+     * =========================================================
      */
-    public function reassign(Request $request, Assignment $assignment)
+    public function storeCP(Request $request)
     {
         $validated = $request->validate([
             'manager_id' => 'required|exists:employees,id',
@@ -111,6 +169,10 @@ class AssignmentController extends Controller
             ]);
 
             AssignmentHistory::create([
+
+                /**
+                 * Affectation liée
+                 */
                 'assignment_id' => $assignment->id,
                 'employee_id' => $assignment->employee_id,
                 'old_manager_id' => $oldManagerId,
@@ -126,8 +188,19 @@ class AssignmentController extends Controller
         return redirect()->back()->with('success', 'Réaffectation effectuée.');
     }
 
+
     /**
-     * Gère la libération ou le transfert d'une ressource (CP, SUP ou TC)
+     * =========================================================
+     * AFFECTER UN CP À UNE AUTRE CAMPAGNE
+     * =========================================================
+     *
+     * Cette méthode permet :
+     * - de prendre un CP déjà affecté
+     * - et de lui attribuer une nouvelle campagne
+     *
+     * IMPORTANT :
+     * - un CP peut avoir plusieurs campagnes
+     * - une campagne ne peut avoir qu'un seul CP actif
      */
     public function release(Request $request, Assignment $assignment)
     {
@@ -168,7 +241,9 @@ class AssignmentController extends Controller
             ]);
 
             AssignmentHistory::create([
-                'assignment_id' => $assignment->id,
+
+                'assignment_id' => $newAssignment->id,
+
                 'employee_id' => $assignment->employee_id,
                 'old_manager_id' => $assignment->manager_id,
                 'old_campaign_id' => $assignment->campaign_id,
@@ -180,6 +255,7 @@ class AssignmentController extends Controller
 
         return redirect()->back()->with('success', 'Ressource libérée avec succès.');
     }
+
 
     /**
      * Libération récursive pour le mode cascade
@@ -201,10 +277,24 @@ class AssignmentController extends Controller
                 'old_campaign_id' => $sub->campaign_id,
                 'action_type' => 'release',
                 'changed_by' => Auth::id(),
-                'reason' => "Libération en cascade suite au départ du responsable",
+                'reason' => "Libération automatique (cascade) suite au départ de son manager",
             ]);
 
             $this->libererEnCascade($sub->employee_id, $campaignId);
         }
+    }
+
+    /**
+     * Affiche l'historique des affectations
+     */
+    public function history()
+    {
+        $histories = AssignmentHistory::with(['employee', 'oldManager', 'newManager', 'oldCampaign', 'newCampaign', 'author'])
+            ->latest()
+            ->paginate(15);
+
+        return Inertia::render('Assignments/History', [
+            'histories' => $histories
+        ]);
     }
 }

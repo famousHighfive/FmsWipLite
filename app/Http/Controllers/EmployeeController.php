@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\EmployeeHistory;
 use App\Models\Position;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,47 +19,28 @@ class EmployeeController extends Controller
     {
         $query = Employee::with('position', 'user');
 
-        // Recherche globale
-        if ($request->filled('search')) {
-            $query->search($request->input('search'));
-        }
-
-        // Filtre par statut
-        if ($request->filled('status')) {
-            $query->status($request->input('status'));
-        }
-
-        // Filtre par poste
-        if ($request->filled('position_id')) {
-            $query->byPosition($request->input('position_id'));
-        }
-        $sortField = $request->input('sort_field', 'last_name');
-        $sortOrder = $request->input('sort_order', 'asc');
-        $perPage = $request->input('per_page', 10);
-
-        $employees = $query
-            ->orderBy($sortField, $sortOrder)
-            ->paginate($perPage)
-            ->withQueryString();
+        // On récupère TOUS les employés pour le filtrage automatique côté client (PrimeVue)
+        // comme demandé par l'utilisateur pour éviter les requêtes à chaque caractère.
+        $employees = $query->orderBy('last_name', 'asc')->get();
 
         return Inertia::render('Employees/Index', [
             'employees' => $employees,
             'positions' => Position::all(),
-            'filters'   => $request->only('search', 'status', 'position_id'),
+            'filters'   => $request->only('status', 'position_id'),
         ]);
     }
 
-    /** Historique des modifications */
-    public function history(Employee $employee)
+    /**
+     * Historique global — toutes les modifications de tous les employés
+     */
+    public function history(Request $request)
     {
-        $employee->load('position');
-
-        $histories = $employee->histories()
-            ->with('changedBy')
-            ->paginate(15);
+        $histories = EmployeeHistory::with('employee', 'oldPosition', 'newPosition', 'changedBy')
+            ->latest('created_at')
+            ->paginate(15)
+            ->withQueryString();
 
         return Inertia::render('Employees/History', [
-            'employee'  => $employee,
             'histories' => $histories,
         ]);
     }
@@ -117,7 +99,6 @@ class EmployeeController extends Controller
     public function show(Employee $employee)
     {
         $employee->load('position', 'user', 'histories.changedBy');
-        // dd($employee);
         return Inertia::render('Employees/Show', [
             'employee' => $employee,
         ]);

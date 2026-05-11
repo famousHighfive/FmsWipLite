@@ -8,9 +8,20 @@ import {
     Trash2,
     Plus
 } from 'lucide-vue-next';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import { ref } from 'vue';
+import { FilterMatchMode } from '@primevue/core/api';
 
 defineProps({
     roles: Array
+});
+
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 </script>
 
@@ -145,145 +156,59 @@ defineProps({
             <div
                 class="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden"
             >
-
-                <!-- TOP -->
-                <div
-                    class="px-8 py-6 border-b border-slate-100 flex items-center justify-between"
+                <DataTable 
+                    :value="roles" 
+                    v-model:filters="filters"
+                    :globalFilterFields="['name']"
+                    class="p-datatable-sm"
+                    stripedRows
                 >
-                    <div>
-                        <h3 class="text-xl font-black text-slate-800">
-                            Liste des rôles
-                        </h3>
+                    <template #header>
+                        <div class="px-8 py-6 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-xl font-black text-slate-800">Liste des rôles</h3>
+                                <p class="text-sm text-slate-500 mt-1">Tous les rôles disponibles dans le système</p>
+                            </div>
+                            <IconField iconPosition="left">
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText v-model="filters['global'].value" placeholder="Filtrage automatique..." class="!rounded-2xl !bg-slate-50/50" />
+                            </IconField>
+                        </div>
+                    </template>
 
-                        <p class="text-sm text-slate-500 mt-1">
-                            Tous les rôles disponibles dans le système
-                        </p>
-                    </div>
+                    <Column field="name" header="Rôle" sortable>
+                        <template #body="{ data }">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                                    <ShieldCheck class="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <h4 class="font-black text-slate-800 capitalize">{{ data.name }}</h4>
+                                    <p class="text-sm text-slate-500 mt-1">Rôle système</p>
+                                </div>
+                            </div>
+                        </template>
+                    </Column>
 
-                    <div class="relative">
-                        <input
-                            type="text"
-                            placeholder="Rechercher un rôle..."
-                            class="w-72 rounded-2xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                    </div>
-                </div>
+                    <Column field="users_count" header="Utilisateurs" sortable>
+                        <template #body="{ data }">
+                            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-100">
+                                <Users class="w-4 h-4 text-slate-500" />
+                                <span class="font-black text-slate-700">{{ data.users_count }}</span>
+                            </div>
+                        </template>
+                    </Column>
 
-                <!-- TABLE -->
-                <div class="overflow-x-auto">
-
-                    <table class="w-full">
-
-                        <thead class="bg-slate-50">
-                            <tr>
-
-                                <th
-                                    class="px-8 py-5 text-left text-xs font-black uppercase tracking-wider text-slate-500"
-                                >
-                                    Rôle
-                                </th>
-
-                                <th
-                                    class="px-8 py-5 text-left text-xs font-black uppercase tracking-wider text-slate-500"
-                                >
-                                    Utilisateurs
-                                </th>
-
-                                <th
-                                    class="px-8 py-5 text-center text-xs font-black uppercase tracking-wider text-slate-500"
-                                >
-                                    Statut
-                                </th>
-
-                                <!-- <th
-                                    class="px-8 py-5 text-right text-xs font-black uppercase tracking-wider text-slate-500"
-                                >
-                                    Actions
-                                </th> -->
-
-                            </tr>
-                        </thead>
-
-                        <tbody>
-
-                            <tr
-                                v-for="role in roles"
-                                :key="role.id"
-                                class="border-b border-slate-100 hover:bg-blue-50/40 transition-all duration-200"
-                            >
-
-                                <!-- ROLE -->
-                                <td class="px-8 py-6">
-                                    <div class="flex items-center gap-4">
-
-                                        <div
-                                            class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-md"
-                                        >
-                                            <ShieldCheck class="w-6 h-6 text-white" />
-                                        </div>
-
-                                        <div>
-                                            <h4 class="font-black text-slate-800 capitalize">
-                                                {{ role.name }}
-                                            </h4>
-
-                                            <p class="text-sm text-slate-500 mt-1">
-                                                Rôle système
-                                            </p>
-                                        </div>
-
-                                    </div>
-                                </td>
-
-                                <!-- USERS -->
-                                <td class="px-8 py-6">
-                                    <div
-                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-100"
-                                    >
-                                        <Users class="w-4 h-4 text-slate-500" />
-
-                                        <span class="font-black text-slate-700">
-                                            {{ role.users_count }}
-                                        </span>
-                                    </div>
-                                </td>
-
-                                <!-- STATUS -->
-                                <td class="px-8 py-6 text-center">
-                                    <span
-                                        class="inline-flex items-center px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm font-black"
-                                    >
-                                        Actif
-                                    </span>
-                                </td>
-
-                                <!-- ACTIONS -->
-                                <!-- <td class="px-8 py-6">
-                                    <div class="flex items-center justify-end gap-3">
-
-                                        <button
-                                            class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center hover:scale-105 transition"
-                                        >
-                                            <Pencil class="w-5 h-5" />
-                                        </button>
-
-                                        <button
-                                            class="w-11 h-11 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center hover:scale-105 transition"
-                                        >
-                                            <Trash2 class="w-5 h-5" />
-                                        </button>
-
-                                    </div>
-                                </td> -->
-
-                            </tr>
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
+                    <Column header="Statut" class="text-center">
+                        <template #body>
+                            <span class="inline-flex items-center px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm font-black">
+                                Actif
+                            </span>
+                        </template>
+                    </Column>
+                </DataTable>
             </div>
 
         </div>

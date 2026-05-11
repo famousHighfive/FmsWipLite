@@ -21,6 +21,8 @@
     },
     "dependencies": {
         "@primeuix/themes": "^2.0.3",
+        "@primevue/core": "^4.5.5",
+        "@primevue/themes": "^4.5.4",
         "chart.js": "^4.5.1",
         "lucide-vue-next": "^1.0.0",
         "primeicons": "^7.0.0",

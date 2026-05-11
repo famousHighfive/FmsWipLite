@@ -6,10 +6,18 @@ import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Tag from "primevue/tag";
 import Button from "primevue/button";
+import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
 import { Clock, CheckCircle, AlertCircle, History } from "lucide-vue-next";
+import { FilterMatchMode } from '@primeuix/api';
 
 const props = defineProps({
     timesheets: Array,
+});
+
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 
 const getStatusSeverity = (status) => {
@@ -85,12 +93,23 @@ const getStatusLabel = (status) => {
             </div>
 
             <div class="card !border-0 !shadow-sm !rounded-2xl overflow-hidden bg-white/50 backdrop-blur-sm">
-                <DataTable :value="timesheets" paginator :rows="10" class="p-datatable-sm"
+                <DataTable 
+                    :value="timesheets" 
+                    v-model:filters="filters"
+                    :globalFilterFields="['employee.user.name', 'status', 'period']"
+                    paginator :rows="10" 
+                    class="p-datatable-sm"
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                     currentPageReportTemplate="{first} à {last} sur {totalRecords}">
                     <template #header>
-                        <div class="flex justify-between items-center py-2">
+                        <div class="flex justify-between items-center py-2 px-4">
                             <span class="text-slate-600 font-bold">Historique des feuilles de temps</span>
+                            <IconField iconPosition="left">
+                                <InputIcon>
+                                    <i class="pi pi-search" />
+                                </InputIcon>
+                                <InputText v-model="filters['global'].value" placeholder="Recherche automatique..." class="!rounded-xl !bg-slate-50/50" />
+                            </IconField>
                         </div>
                     </template>
 

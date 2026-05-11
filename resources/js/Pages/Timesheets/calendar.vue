@@ -10,6 +10,7 @@ import Toast from "primevue/toast";
 import TimesCard from "./TimesCard.vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import AppLayout from "@/Layouts/AppLayout.vue";
+import { FilterMatchMode } from '@primevue/core/api';
 
 const toast = useToast();
 const props = defineProps({ calendar: Array });
