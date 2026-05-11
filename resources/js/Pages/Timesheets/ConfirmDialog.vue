@@ -23,11 +23,10 @@ const handleConfirm = () => {
     router.post(`/timesheets/${props.timesheetId}/submit`, {}, {
         preserveScroll: true,
         onSuccess: () => {
-            console.log("Succès !");
             close();
         },
         onError: (err) => {
-            console.error("Erreur serveur :", err);
+            // Error handled by Inertia or Toast if implemented
         }
     });
 };
