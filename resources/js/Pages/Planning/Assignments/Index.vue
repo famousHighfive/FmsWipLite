@@ -24,36 +24,6 @@ const toast = useToast();
 const confirm = useConfirm();
 const selectedSupervisor = ref(null);
 const showTeleconseillersModal = ref(false);
-const showCampaignModal = ref(false);
-
-const campaignForm = useForm({
-    employee_id: null,
-    campaign_id: null,
-    manager_id: null,
-    position_id: props.supPositionId,
-    start_date: new Date(),
-});
-
-const openCampaignModal = (supervisor) => {
-    campaignForm.employee_id = supervisor.id;
-    selectedSupervisor.value = supervisor;
-    showCampaignModal.value = true;
-};
-
-const submitCampaignAssignment = () => {
-    campaignForm.post(route('assignments.store'), {
-        onSuccess: () => {
-            toast.add({
-                severity: 'success',
-                summary: 'Affecté',
-                detail: 'Superviseur affecté à la campagne avec succès.',
-                life: 3000
-            });
-            showCampaignModal.value = false;
-            campaignForm.reset();
-        }
-    });
-};
 
 const getStatusLabel = (status) => {
     switch (status) {
@@ -167,10 +137,6 @@ const terminateAssignment = (id) => {
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                        <Button v-if="!item.supervisor.has_campaign" @click="openCampaignModal(item.supervisor)" class="flex-1 md:flex-none !bg-white !text-blue-600 !border-blue-100 !rounded-2xl !px-6 !py-3 !font-black !text-xs !uppercase !tracking-widest shadow-sm hover:!bg-blue-50 transition-all">
-                            <Megaphone class="w-4 h-4 mr-2" />
-                            Affecter Campagne
-                        </Button>
                         <Link :href="route('planning.assignments.create', { supervisor_id: item.supervisor.id })" class="flex-1 md:flex-none">
                             <Button class="w-full !bg-white !text-blue-600 !border-blue-100 !rounded-2xl !px-6 !py-3 !font-black !text-xs !uppercase !tracking-widest shadow-sm hover:!bg-blue-50 transition-all">
                                 <UserPlus class="w-4 h-4 mr-2" />
@@ -272,16 +238,16 @@ const terminateAssignment = (id) => {
                     <Column header="Actions" headerStyle="width: 15rem">
                         <template #body="{ data }">
                             <div class="flex items-center gap-1.5">
-                                <Button v-if="data.status === 'en attente'" @click="validateAssignment(data.id)" class="!bg-green-600 !border-none !text-white !px-2.5 !py-1.5 !text-[10px] !font-bold !rounded-lg flex items-center gap-1">
-                                    <CheckCircle class="w-3 h-3" />
+                                <Button v-if="data.status === 'en attente'" @click="validateAssignment(data.id)" class="!bg-emerald-500 !border-none !text-white !px-3 !py-2 !text-[10px] !font-black !rounded-xl !uppercase !tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/10 hover:!bg-emerald-600 transition-all">
+                                    <CheckCircle class="w-3.5 h-3.5" />
                                     Valider
                                 </Button>
-                                <Button v-if="['validé', 'en attente'].includes(data.status)" @click="suspendAssignment(data.id)" class="!bg-amber-600 !border-none !text-white !px-2.5 !py-1.5 !text-[10px] !font-bold !rounded-lg flex items-center gap-1">
-                                    <PauseCircle class="w-3 h-3" />
+                                <Button v-if="['validé', 'en attente'].includes(data.status)" @click="suspendAssignment(data.id)" class="!bg-amber-500 !border-none !text-white !px-3 !py-2 !text-[10px] !font-black !rounded-xl !uppercase !tracking-widest flex items-center gap-2 shadow-lg shadow-amber-500/10 hover:!bg-amber-600 transition-all">
+                                    <PauseCircle class="w-3.5 h-3.5" />
                                     Suspendre
                                 </Button>
-                                <Button v-if="['validé', 'suspendu', 'en attente'].includes(data.status)" @click="terminateAssignment(data.id)" class="!bg-red-600 !border-none !text-white !px-2.5 !py-1.5 !text-[10px] !font-bold !rounded-lg flex items-center gap-1">
-                                    <XCircle class="w-3 h-3" />
+                                <Button v-if="['validé', 'suspendu', 'en attente'].includes(data.status)" @click="terminateAssignment(data.id)" class="!bg-rose-500 !border-none !text-white !px-3 !py-2 !text-[10px] !font-black !rounded-xl !uppercase !tracking-widest flex items-center gap-2 shadow-lg shadow-rose-500/10 hover:!bg-rose-600 transition-all">
+                                    <XCircle class="w-3.5 h-3.5" />
                                     Terminer
                                 </Button>
                             </div>
@@ -293,41 +259,6 @@ const terminateAssignment = (id) => {
                     Aucun téléconseiller dans cette équipe
                 </div>
             </div>
-        </Dialog>
-
-        <!-- MODAL D'AFFECTATION CAMPAGNE -->
-        <Dialog v-model:visible="showCampaignModal" header="Affecter à une campagne" :style="{ width: '30rem' }" modal>
-            <form @submit.prevent="submitCampaignAssignment" class="space-y-6 pt-4">
-                <div v-if="selectedSupervisor" class="bg-blue-50 p-4 rounded-xl flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
-                        {{ selectedSupervisor.name.substring(0, 2).toUpperCase() }}
-                    </div>
-                    <div>
-                        <p class="text-xs font-black text-blue-600 uppercase tracking-widest">Superviseur</p>
-                        <p class="font-bold text-slate-800">{{ selectedSupervisor.name }}</p>
-                    </div>
-                </div>
-
-                <div class="space-y-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Campagne</label>
-                    <Select v-model="campaignForm.campaign_id" :options="campaigns" optionLabel="name" optionValue="id" placeholder="Choisir une campagne" class="w-full !rounded-xl !bg-slate-50 !border-slate-100" />
-                </div>
-
-                <div class="space-y-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Chef de Plateau (Responsable)</label>
-                    <Select v-model="campaignForm.manager_id" :options="chefsDePlateau" optionLabel="user.name" optionValue="id" placeholder="Choisir un CP" class="w-full !rounded-xl !bg-slate-50 !border-slate-100" />
-                </div>
-
-                <div class="space-y-2">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date de début</label>
-                    <DatePicker v-model="campaignForm.start_date" class="w-full" inputClass="!rounded-xl !bg-slate-50 !border-slate-100" />
-                </div>
-
-                <div class="flex gap-3 pt-2">
-                    <Button label="Annuler" text @click="showCampaignModal = false" class="flex-1 !py-3 !rounded-xl" />
-                    <Button type="submit" label="Confirmer l'affectation" :loading="campaignForm.processing" class="flex-1 !bg-blue-600 !border-none !py-3 !rounded-xl !font-bold" />
-                </div>
-            </form>
         </Dialog>
     </AppLayout>
 </template>

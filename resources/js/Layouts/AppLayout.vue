@@ -6,6 +6,8 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
+import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import {
   LayoutDashboard,
   Users,
@@ -474,6 +476,28 @@ const currentSubMenu = computed(() => {
 
 const hasSubMenu = computed(() => currentSubMenu.value.length > 0);
 const sidebarWidth = computed(() => (isHoveringSidebar.value || !hasSubMenu.value) ? 'w-64' : 'w-20');
+
+const confirm = useConfirm();
+
+const logout = () => {
+  confirm.require({
+    message: 'Êtes-vous sûr de vouloir vous déconnecter ?',
+    header: 'Confirmation de déconnexion',
+    icon: 'pi pi-exclamation-triangle',
+    acceptProps: {
+      label: 'Se déconnecter',
+      severity: 'danger'
+    },
+    rejectProps: {
+      label: 'Annuler',
+      severity: 'secondary',
+      variant: 'text'
+    },
+    accept: () => {
+      router.post(route('logout'));
+    }
+  });
+};
 </script>
 
 <template>
@@ -581,9 +605,9 @@ const sidebarWidth = computed(() => (isHoveringSidebar.value || !hasSubMenu.valu
                 <UserCircle class="w-4 h-4" /> Profil
               </DropdownLink>
               <div class="border-t border-slate-50"></div>
-              <DropdownLink :href="route('logout')" method="post" as="button" class="flex items-center gap-2 py-3 font-bold text-red-600">
+              <button @click="logout" class="w-full flex items-center gap-2 py-3 px-4 font-bold text-red-600 hover:bg-red-50 transition-colors">
                 <LogOut class="w-4 h-4" /> Déconnexion
-              </DropdownLink>
+              </button>
             </template>
           </Dropdown>
         </div>
