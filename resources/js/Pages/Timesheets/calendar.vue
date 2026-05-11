@@ -8,7 +8,10 @@ import Button from 'primevue/button';
 import TimesCard from "./TimesCard.vue";
 import ConfirmDialog from "./ConfirmDialog.vue";
 import AppLayout from "@/Layouts/AppLayout.vue";
+import { useToast } from "primevue/usetoast"; 
+import Toast from "primevue/toast";
 
+const toast = useToast();
 const props = defineProps({
   calendar: Array,
 });
@@ -37,7 +40,7 @@ const periodDates = computed(() => {
 
 // --- UTILITAIRES D'AFFICHAGE ---
 const formatHeader = (d) => new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "numeric" }).format(new Date(d));
-
+// verifie si l'employer a une saisie des heure pour l'afficher dans les input
 const getEntry = (entries, date) => {
   const found = entries?.find(e => e.date.startsWith(date));
   return found ? { ...found, is_empty: false } : { is_empty: true };
@@ -87,9 +90,21 @@ const openConfirm = (timesheet) => {
     };
     showConfirmDialog.value = true;
 };
-
+// selection multiple
 const openBulkEdit = () => {
     if (selectedEmployees.value.length === 0) return;
+       // Vérification : est-ce qu'un des employés sélectionnés est déjà "soumis" ?
+    const hasSubmitted = selectedEmployees.value.some(emp => emp.status === 'soumis');
+
+    if (hasSubmitted) {
+        toast.add({ 
+            severity: 'error', 
+            summary: 'Action impossible', 
+            detail: 'Impossible de renseigner de nouvelles heures car un ou plusieurs employés ont un statut soumis.', 
+            life: 5000 
+        });
+        return; // On arrête tout, le modal ne s'ouvrira pas
+    }
     selectedData.value = {
         isBulk: true,
         timesheet_ids: selectedEmployees.value.map(item => item.id),
@@ -110,7 +125,7 @@ const getTotalsData = (timesheet) => {
         // parseFloat sécurisé avec repli à 0
         const worked = parseFloat(entry.total_hours) || 0;
         const planned = parseFloat(entry.planned_hours) || 0;
-        
+
         return {
             worked: acc.worked + worked,
             planned: acc.planned + planned
@@ -121,6 +136,7 @@ const getTotalsData = (timesheet) => {
 </script>
 <template>
   <Head title="Calendrier de Pointage" />
+  <Toast />
   <AppLayout>
     <div class="p-6 bg-[#fcfdfe] min-h-screen"> <div class="flex justify-between items-center mb-6">
         <div>
@@ -144,7 +160,12 @@ const getTotalsData = (timesheet) => {
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport"
         currentPageReportTemplate="{first}-{last} sur {totalRecords}"
       >
-        <Column selectionMode="multiple" headerStyle="width: 3rem; background: #f8fafc" frozen></Column>
+<Column 
+  selectionMode="multiple" 
+  headerStyle="width: 3rem; background: #f8fafc" 
+  frozen 
+  :disabledSelection="data => data.status === 'soumis'"
+></Column>
         
         <Column frozen header="Employés" style="min-width: 250px">
           <template #body="{ data }">
